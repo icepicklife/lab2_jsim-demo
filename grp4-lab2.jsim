@@ -1,0 +1,35 @@
+*******************************************************************************
+* LAB #2
+* - Castillo, Hanzo
+* - Jaso, Elijem
+* - Marcelino, Jaren
+*
+*******************************************************************************
+
+.include "8clocks.jsim"
+.include "nominal.jsim"
+.include "stdcell.jsim"
+
+.subckt fa firstBit secondBit carryIn sum carryOut 
+
+    Xxor firstBit secondBit firsthalfOut xor2
+    Xandp1 firstBit secondBit nand_out nand2
+    Xandp2 nand_out andfirst_out inverter
+
+    Xxor1 firsthalfOut carryIn sum xor2
+    Xandp3 firsthalfOut carryIn nand_out2 nand2
+    Xandp4 nand_out2 andsecond_out inverter
+
+    Xorp1 andsecond_out andfirst_out or_out nor2
+    Xorp2 or_out carryOut inverter
+
+.ends 
+
+Xfulladder clk3 clk2 clk1 adder_sum adder_cout fa
+
+.tran 40ns
+.plot clk1
+.plot clk2
+.plot clk3
+.plot adder_sum
+.plot adder_cout
