@@ -12,8 +12,8 @@
 
 .subckt fx a b c d e f g out
 
-    Xnand1 a b c x nand3    
-    Xnand2 d e y nand2      
+    Xnand1 a b c x nand3    * since the function is a SOP function, we can efficiently use NAND gates
+    Xnand2 d e y nand2      * by converting the function into a NAND-NAND circuit
     Xnand3 f g z nand2
     
     Xnand4 x y z out nand3
@@ -22,10 +22,10 @@
 
 .subckt fa firstBit secondBit carryIn sum carryOut 
 
-    Xxor1 firstBit secondBit firsthalfOut xor2    
+    Xxor1 firstBit secondBit firsthalfOut xor2                  * first half of via half adder implementation
     Xnandp1 firstBit secondBit nand_out1 nand2
 
-    Xxor2 firsthalfOut carryIn sum xor2           
+    Xxor2 firsthalfOut carryIn sum xor2                            * second half of via half adder implementation
     Xnand2 firsthalfOut carryIn nand_out2 nand2
 
     Xannd3 nand_out1 nand_out2 carryOut nand2
