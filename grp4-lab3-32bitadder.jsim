@@ -22,10 +22,9 @@
 
 .ends 
 
-.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] cout[31:30]
+.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] c_out[31:30]
 
-    Xfulladdstart a31 b31 cin0 sum31 c_out0 fa
-    Xfulladdloop a[30:0] b[30:0] cout[0:30] sum[30:0] cout[1:31] fa
+    Xfulladd32 a[31:0] b[31:0]  c_out[30:0] cin0 sum[31:0] c_out[31:0] fa
 
 .ends
 
