@@ -10,16 +10,6 @@
 .include "nominal.jsim"
 .include "stdcell.jsim"
 
-.subckt fx a b c d e f g out
-
-    Xnand1 a b c x nand3    
-    Xnand2 d e y nand2      
-    Xnand3 f g z nand2
-    
-    Xnand4 x y z out nand3
-
-.ends
-
 .subckt fa firstBit secondBit carryIn sum carryOut 
 
     Xxor1 firstBit secondBit firsthalfOut xor2    
@@ -32,17 +22,24 @@
 
 .ends 
 
-Xfunction clk1 clk2 clk3 clk4 clk5 clk6 clk7 out fx
-Xfulladder clk5 clk6 clk7 adder_sum adder_cout fa
+.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] cout[31:30]
+
+    Xfulladdstart a31 b31 cin31 sum31 c_out31
+    Xfulladdloop a[30:0] b[30:0] c_out[31:0] sum[30:0] c_out[30:0]
+
+.ends
+
+Xsum a[31:0] b[31:0] 0 sum[31:0] c31 c30 add32
+
+Wa a[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
++ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
+Wb b[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
++ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
 
 .tran 640ns
-.plot clk1
-.plot clk2
-.plot clk3
-.plot clk4
-.plot clk5
-.plot clk6
-.plot clk7
-.plot out
-.plot adder_sum
-.plot adder_cout
+.plot a[31:0]
+.plot b[31:0]
+.plot sum[31:0]
+
+
+
