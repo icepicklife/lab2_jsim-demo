@@ -10,6 +10,28 @@
 .include "nominal.jsim"
 .include "stdcell.jsim"
 
+*******************************************************************************
+* Below is the full adder implementation via two half-adder:
+* SUM =  A ⊕ B ⊕ Cin 
+* COUT = (A · B) + (Cin · (A ⊕ B))
+* 
+* Rewrite carry-out with double negation:
+* COUT = !(!(A · B) · !(Cin · (A ⊕ B)) ) 
+*
+* Input nodes:
+* firstBit = A 
+* secondBit = B 
+* carryIn = Cin
+*
+* Output nodes:
+* firsthalfOut = A ⊕ B
+* sum = A ⊕ B ⊕ Cin
+* nand_out1 = !(A · B)
+* nand_out2 = !(Cin · (A ⊕ B))
+* carryOut =  !(!(A · B) · !(Cin · (A ⊕ B)) ) 
+*
+*******************************************************************************
+
 .subckt fa firstBit secondBit carryIn sum carryOut 
 
     Xxor1 firstBit secondBit firsthalfOut xor2    
@@ -21,6 +43,27 @@
     Xand3 nand_out1 nand_out2 carryOut nand2
 
 .ends 
+
+*******************************************************************************
+* Below is the implementation for 32-bit Ripple-Carry Adder:
+*
+* It is constructed by chaining 32 full-adder units, wherein each fa computes
+* SUM = A ⊕ B ⊕ Cin and COUT = (A · B) + (Cin · (A ⊕ B)).
+*
+* Ripple Effect
+* The carry-out of one fa ripples forward to become the carry-in of the next.
+* It starts at the least significant bit (LSB), Cin = cin0 enters fa0.
+* The generated carry propagates sequentially through fa1 to fa31.
+*
+* Inputs:
+* a[31:0], b[31:0] 
+* cin0          
+*
+* Outputs:
+* sum[31:0] 
+* c_out[31]
+*
+*******************************************************************************
 
 .subckt add32 a[31:0] b[31:0] cin0 sum[31:0] c_out[31:30]
 
