@@ -40,7 +40,7 @@
     Xxor2 firsthalfOut carryIn sum xor2           
     Xnand2 firsthalfOut carryIn nand_out2 nand2
 
-    Xand3 nand_out1 nand_out2 carryOut nand2
+    Xnand3 nand_out1 nand_out2 carryOut nand2
 
 .ends 
 
