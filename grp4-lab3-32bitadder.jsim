@@ -18,7 +18,7 @@
     Xxor2 firsthalfOut carryIn sum xor2           
     Xnand2 firsthalfOut carryIn nand_out2 nand2
 
-    Xannd3 nand_out1 nand_out2 carryOut nand2
+    Xand3 nand_out1 nand_out2 carryOut nand2
 
 .ends 
 
@@ -31,11 +31,12 @@
 Xsum a[31:0] b[31:0] 0 sum[31:0] c31 c30 add32
 
 Wa a[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
-+ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
-Wb b[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
-+ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 
++ 0x00000000 0x55555555 0x00000000 0x55555555 0xFFFFFFFF 0xAAAAAAAA 0x00000000 0xAAAAAAAA 0x00000001 0xFFFFFFFF
 
-.tran 640ns
+Wb b[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
++ 0x00000000 0x00000000 0x55555555 0x55555555 0xFFFFFFFF 0x00000000 0xAAAAAAAA 0xAAAAAAAA 0xFFFFFFFF 0x00000001
+
+.tran 200ns
 .plot a[31:0]
 .plot b[31:0]
 .plot sum[31:0]
