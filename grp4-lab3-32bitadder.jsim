@@ -67,7 +67,7 @@
 
 .subckt add32 a[31:0] b[31:0] cin0 sum[31:0] c_out[31:30]
 
-    Xfulladd32 a[31:0] b[31:0]  c_out[30:0] cin0 sum[31:0] c_out[31:0] fa
+    Xfulladd32 a[31:0] b[31:0] c_out[30:0] cin0 sum[31:0] c_out[31:0] fa
 
 .ends
 
@@ -83,6 +83,7 @@ Wb b[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
 .plot a[31:0]
 .plot b[31:0]
 .plot sum[31:0]
-
+.plot c30
+.plot c31
 
 
