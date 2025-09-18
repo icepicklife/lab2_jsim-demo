@@ -16,7 +16,7 @@
 .subckt fa a b c_in sum c_out
 
     Xxor1 a b firsthalfOut xor2    
-    Xnandp1 a b nand_out1 nand2
+    Xnand1 a b nand_out1 nand2
     Xxor2 firsthalfOut c_in sum xor2           
     Xnand2 firsthalfOut c_in nand_out2 nand2
     Xnand3 nand_out1 nand_out2 c_out nand2
