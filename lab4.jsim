@@ -30,11 +30,31 @@
 .ends
 
 *******************************************************************************
-* Counter32 subcircuit below.
+* Counter32 subcircuit below with reference to the logic diagram in Slide 7
+* or the version 2 of 32-bit counter.
+*
+* This circuit is constructed from three primary components arranged in a
+* feedback loop: a 32-bit adder (add32), 32 multiplexers (mux2), and a
+* 32-bit register (dreg). 
+
+* The register's current output (f) is sent back to the adder's input. 
+* The adder computes the next value, which is then selected by the 
+* multiplexer (based on the reset signal) and becomes the new input for 
+* the register. The register only updates its value on the rising edge of the 
+* clock (clk).
+*
+*
+* Other:
+* The # symbol is JSim's duplication iterator which was used to create
+* multiple copies of a single node. In this circuit, the single-bit reset
+* and clk signals must be connected to all 32 instances of the multiplexers
+* and registers. The reset#32 and clk#32 creates the necessary
+* 32 connections. Similarly, 0#32 provides 32 individual ground connections for 
+* the multiplexers' inputs.
 *******************************************************************************
 .subckt counter32 reset a[31:0] f[31:0] clk
 
-  Xadder a[31:0] f[31:0] 0 adder_sum[31:0] unused_cout[31:30] add32
+  Xadder a[31:0] f[31:0] 0 adder_sum[31:0] overflow_out[31:30] add32
 
   Xmux[31:0] reset#32 adder_sum[31:0] 0#32 mux_out[31:0] mux2
 
