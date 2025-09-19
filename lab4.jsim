@@ -116,3 +116,16 @@ Wincr incr[31:0] nrz(0, 5, 50ns, 0ns, 0.001ns, 0.001ns)
 .plot sd(incr[31:0])
 .plot clk1
 .plot sd(reg[31:0])
+
+*******************************************************************************
+* 
+* b. What is stopping you from using a super-fast clock to make a super-fast
+* counter?
+* - since the dreg is responsible for when to increment via the incr[31:0],
+* note that it performs the desired updated operations during its positive
+* half-cycle. Assuming that the frequency reaches near infinity, its always-on
+* property will have a tendency to not account for the possible changes of the
+* other variables like the incrementer for a specific time, reset value, and the
+* reception of the updated value. It also does not account for possible delays
+* in the other operations which tend to inaccuracies in the real-time incrementation
+*******************************************************************************
