@@ -1,0 +1,75 @@
+*******************************************************************************
+* LAB #5
+* - Castillo, Hanzo
+* - Jaso, Elijem
+* - Marcelino, Jaren
+
+*******************************************************************************
+
+.include "8clocks.jsim"
+.include "nominal.jsim"
+.include "stdcell.jsim"
+
+*******************************************************************************
+* Full adder and 32-bit ripple-carry adder subcircuits below.
+*******************************************************************************
+.subckt fa a b c_in sum c_out
+
+    Xxor1 a b firsthalfOut xor2    
+    Xnand1 a b nand_out1 nand2
+    Xxor2 firsthalfOut c_in sum xor2           
+    Xnand2 firsthalfOut c_in nand_out2 nand2
+    Xnand3 nand_out1 nand_out2 c_out nand2
+
+.ends
+
+.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] c_out[31:30]
+
+    Xfulladd32 a[31:0] b[31:0] c_out[30:0] cin0 sum[31:0] c_out[31:0] fa
+
+.ends
+
+*******************************************************************************
+* Counter32 subcircuit below with reference to the logic diagram in Slide 7
+* or the version 2 of 32-bit counter.
+*
+* This circuit is constructed from three primary components arranged in a
+* feedback loop: a 32-bit adder (add32), 32 multiplexers (mux2), and a
+* 32-bit register (dreg). 
+
+* The register's current output (f) is sent back to the adder's input. 
+* The adder computes the next value, which is then selected by the 
+* multiplexer (based on the reset signal) and becomes the new input for 
+* the register. The register only updates its value on the rising edge of the 
+* clock (clk).
+*
+*
+* Other:
+* The # symbol is JSim's duplication iterator which was used to create
+* multiple copies of a single node. In this circuit, the single-bit reset
+* and clk signals must be connected to all 32 instances of the multiplexers
+* and registers. The reset#32 and clk#32 creates the necessary
+* 32 connections. Similarly, 0#32 provides 32 individual ground connections for 
+* the multiplexers' inputs.
+*******************************************************************************
+.subckt counter32 reset a[31:0] f[31:0] clk
+
+  Xadder a[31:0] f[31:0] 0 adder_sum[31:0] overflow_out[31:30] add32
+
+  Xmux[31:0] reset#32 adder_sum[31:0] 0#32 mux_out[31:0] mux2
+
+  Xreg[31:0] mux_out[31:0] clk#32 f[31:0] dreg
+
+.ends
+
+*******************************************************************************
+* Defining as32
+*******************************************************************************
+
+.subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z
+
+*******************************************************************************
+* Defining cmp32
+*******************************************************************************
+
+.subckt cmp32 n v z op[2:1] fcmp[31:0]
