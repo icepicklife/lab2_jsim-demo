@@ -1,0 +1,244 @@
+*************************************************************************
+* LAB #4
+* - Carbonell, Paige
+* - Cruel, Enrico
+* - Lalimarmo, Julie Ann
+*************************************************************************
+
+.include "8clocks.jsim"
+.include "nominal.jsim"
+.include "stdcell.jsim"
+
+*************************************************************************
+* Plug-in your full adder and 32-bit ripple-carry adder subcircuits here.
+*************************************************************************
+
+* Subcircuit "fa" definition: 1-bit full adder
+.subckt fa a b carry_in sum carry_out
+    * Logic for sum: sum = a â b â carry_in
+    Xsub1 a b outxor1 xor2        
+    Xsub2 outxor1 carry_in sum xor2 
+
+    * Logic for carry_out:
+    * carry_out = (aÂ·b) + (carry_inÂ·(aâb))
+    * Implementation uses NAND-only logic
+
+    * outnand1 = Â¬(aÂ·b)
+    Xsub3 a b outnand1 nand2
+
+    * outcarry = Â¬((aâb)Â·carry_in)
+    Xsub4 outxor1 carry_in outcarry nand2
+
+    * Final carry_out:
+    * carry_out = NAND(outcarry, outnand1)
+    *           = (aÂ·b) + (carry_inÂ·(aâb))
+    Xsub5 outcarry outnand1 carry_out nand2
+.ends
+
+* Subcircuit "add32" definition: 32-bit ripple-carry adder
+.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] cout[31:30]
+
+    * Connect input carry cin0 into c[0]
+    * Connect final carry-out signals to cout pins
+    * cout[31] = c[32] (carry out of MSB adder)
+    * cout[30] = c[31] (second-to-last carry)
+    .connect c[0] cin0
+    .connect cout[31] c[32]
+    .connect cout[30] c[31]
+
+    * 32 chained full adders:
+    * Each stage i computes sum[i] and passes carry to stage i+1.
+    * Example: 
+    *   fa0 takes a0, b0, c0 â produces sum0, c1
+    *   ...
+    *   fa31 takes a31, b31, c31 â produces sum31, c32
+    Xfa[31:0] a[31:0] b[31:0] c[31:0] sum[31:0] c[32:1] fa
+
+.ends
+
+*************************************************************************
+* Your new as32 subcircuit code should go here.
+*************************************************************************
+.subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z
+
+*find the inverse of b
+Xinv b[31:0] b_inv[31:0] inverter
+
+*if op0 = 0, then it is addition. bselect will use b
+*if op0 = 1, then it is subtraction. bselect will use b_inv
+
+Xmux op0#32 b[31:0] b_inv[31:0] bselect[31:0] mux2
+
+Xadd32 a[31:0] bselect[31:0] op0 fas[31:0] cout[31:30] add32
+
+*if n is 1, it's negative.
+*if n is 0, it's positive
+.connect n fas[31]
+
+*v is to check if the result is signed overflow
+Xoverflow cout[31] cout[30] v xor2
+
+*n is to check if the result is 0
+
+Xnor0 fas[0] fas[1] fas[2] fas[3] g0 nor4 
+Xnor1 fas[4] fas[5] fas[6] fas[7] g1 nor4 
+Xnor2 fas[8] fas[9] fas[10] fas[11] g2 nor4 
+Xnor3 fas[12] fas[13] fas[14] fas[15] g3 nor4 
+Xnor4 fas[16] fas[17] fas[18] fas[19] g4 nor4 
+Xnor5 fas[20] fas[21] fas[22] fas[23] g5 nor4 
+Xnor6 fas[24] fas[25] fas[26] fas[27] g6 nor4 
+Xnor7 fas[28] fas[29] fas[30] fas[31] g7 nor4
+
+Xnor8 g0 g1 g2 g3 h0 nand4 
+Xnor9 g4 g5 g6 g7 h1 nand4
+
+XZnor2 h0 h1 z nor2
+.ends
+
+.subckt cmp32 n v z op[2:1] fcmp[31:0]
+  .connect 0 fcmp[31:1]
+  Xsc n v n_o xor2
+  Xloe n_o z le or2
+
+  Xmux4 op[2] op[1] 0 n_o z le fcmp[0] mux4
+.ends
+
+*************************************************************************
+* Simulation
+*************************************************************************
+* vdd = logic 1
+Xas32add a[31:0] b[31:0] op0 fas[31:0] negative overflow zero as32
+
+* op2 = 1 to check for a < b
+* op1 = 1 to check for a = b
+Xcmp32 negative overflow zero vdd 0 fcmp[31:0] cmp32
+
+Wop op0 nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
++ 1 1 1 1 1 1 1 1 1 1
+
+ Wa a[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
++ 2
++ -3
++ 0x80000000
++ 2
++ 3
++ 5
++ 0x7FFFFFFF
++ -2
++ 3
++ 3
+
+Wb b[31:0] nrz(0, 5, 20ns, 0ns, 0.001ns, 0.001ns)
++ -3
++ 2
++ 2
++ 0x80000000
++ 5
++ 3
++ -2
++ 0x7FFFFFFF
++ 3
++ 3
+
+* Plot
+.tran 500ns
+.plot a[31:0]
+.plot b[31:0]
+.plot op0
+.plot fas[31:0]
+.plot fcmp[0]
+.plot negative
+.plot overflow
+.plot zero
+
+*************************************************************************
+* This "reset" waveform sets up a reset signal that has a delayed start of 15ns
+* and then goes to the next value every 50ns.
+* The values "1 0 0 0 1 0" indicate that the reset signal only turns on twice
+* (at times 15ns and 215ns) for a period of 50ns intervals each, and the signal
+* is turned off otherwise.
+*************************************************************************
+*Wreset reset nrz(0, 5, 50ns, 15ns, 0.001ns, 0.001ns)
+*+ 1 0 0 0 1 0
+
+*************************************************************************
+* This "incr" waveform sets up an increment value for your counter32 circuit.
+* Note that it does NOT have a delayed start. The values "0 1 3 -1" roughly
+* translate to the following "commands" in Java-like syntax:
+*   reg += 0;  //  0 means don't touch the value
+*   reg++;     //  1 means increment by 1
+*   reg += 3;  //  3 means increment by 3
+*   reg--;     // -1 means decrement by 1
+* But note that these "commands" will happen EVERY positive clock edge (and
+* only when your reset signal is off)!
+*************************************************************************
+*Wincr incr[31:0] nrz(0, 5, 50ns, 0ns, 0.001ns, 0.001ns)
+*+ 0 1 3 -1
+
+*************************************************************************
+* Plot our reset waveform, our incr waveform, clk1, and your 32-bit register.
+* Note: sd() displays a range of nodes as a signed decimal (instead of hex)
+*************************************************************************
+.tran 300ns
+.plot reset
+.plot sd(incr[31:0])
+.plot clk1
+.plot sd(reg[31:0])
+
+*****************************************************************************
+* Behavior of the 32-bit register (reg[31:0])
+*
+* The 32-bit register only updates on the rising edge of the clock, since 
+* it is built from positive-edge-triggered-flip-flops (Xdreg). This means that 
+* even if the incr or reset inputs change immediately, the actual
+* stored value (reg[31:0]) does not change until the next rising edge.
+*
+* Incrementing: On each rising edge, the adder output (sum = reg + incr) is 
+* stored into the register. If incr = 1, the counter goes up by 1 every cycle;
+* if incr = 3, it goes up by 3, etc.
+*
+* Decrementing: If the incr value is negative (in 2's complement form, e.g.,
+* -1 = 0xFFFFFFFF). then the adder output is the register value plus that
+* negative number. This effectively decrements the stored value.
+*
+* Resetting: When reset = 1, the MUX forces the register inputs to 0[31:0].
+* On the next clock edge, the register is cleared to all zeroes.
+*
+* Delay observation: The "lag" between incr/reset changes and register
+* updates is because the adder/MUX outputs respond immediately, but the
+* register only latches them on a clock edge. This is a key proprty of
+* synchronous sequential circuits, ensuring stable updates instead of chaotic
+* propagation.
+*
+* For example, in all CPUs, ALUs compute results immediately, but registers
+* only latch them on the next clock cycle. Without this edge-triggered rule,
+* results would be unstable.
+*
+*****************************************************************************
+* Feeding the counter a super=fast clock does not guarantee correct or faster 
+* operation, because of timing constraints and physical hardware limits.
+* 
+* Critical path limitation: Each count requires signals to propagate through
+* the 32-bit ripply-carry adder, the MUX, and finally into the register. The
+* longest path (adder -> MUX -> register) is called the critical path. If the
+* clock edge comes before the signal has stabilized along its path, the
+* register may capture an incorrect value.
+* For example, if each full adder stage takes ~50 ps, a 32-bit ripple adder
+* takes 32 * 50 ps = 1.6 ns worse-case. That limits the clock frequency to
+* about 625 MHz. Faster clocks would cause unstable outputs.
+*
+* Setup and hold times: Flip-flops require the input data to be stable for a 
+* short window before and after the clock edge. A clock that is too fast can
+* violate these timing windows, causing metastability or unpredictable outputs.
+* 
+* Physical and practical limits: Real circuits are constrained by transistor
+* switching speeds, interconnect capacitance, and power dissipation. Simply
+* pushing the clock faster increases heat and reduces reliability. This is why
+* modern processors use advanced adder designs (carry-lookahead, carry-select,
+* pipelining) instead of ripple-carry adders to support GHz-level clocks.
+* 
+* For example, early microprocessors (intel 8086, ~5-10 MHz) used ripple-carry
+* adders. Modern CPUs (Intel Core i9, ~3-5 GHz) use faster adders and
+* pipelining. It's not just "faster clocks," but redesigning circuits to
+* shorten the critical path.
+******************************************************************************

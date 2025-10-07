@@ -1,9 +1,8 @@
 *******************************************************************************
-* LAB #5
+* LAB #5: 32-bit Adder/Subtractor and Comparator
 * - Castillo, Hanzo
 * - Jaso, Elijem
 * - Marcelino, Jaren
-
 *******************************************************************************
 
 .include "8clocks.jsim"
@@ -11,69 +10,95 @@
 .include "stdcell.jsim"
 
 *******************************************************************************
-* Full adder and 32-bit ripple-carry adder subcircuits below.
+* Full adder and 32-bit ripple-carry adder subcircuits
 *******************************************************************************
 .subckt fa a b c_in sum c_out
-
-    Xxor1 a b firsthalfOut xor2    
+    Xxor1 a b firsthalfOut xor2
     Xnand1 a b nand_out1 nand2
-    Xxor2 firsthalfOut c_in sum xor2           
+    Xxor2 firsthalfOut c_in sum xor2
     Xnand2 firsthalfOut c_in nand_out2 nand2
     Xnand3 nand_out1 nand_out2 c_out nand2
-
 .ends
 
 .subckt add32 a[31:0] b[31:0] cin0 sum[31:0] c_out[31:30]
-
     Xfulladd32 a[31:0] b[31:0] c_out[30:0] cin0 sum[31:0] c_out[31:0] fa
-
 .ends
 
 *******************************************************************************
-* Counter32 subcircuit below with reference to the logic diagram in Slide 7
-* or the version 2 of 32-bit counter.
-*
-* This circuit is constructed from three primary components arranged in a
-* feedback loop: a 32-bit adder (add32), 32 multiplexers (mux2), and a
-* 32-bit register (dreg). 
-
-* The register's current output (f) is sent back to the adder's input. 
-* The adder computes the next value, which is then selected by the 
-* multiplexer (based on the reset signal) and becomes the new input for 
-* the register. The register only updates its value on the rising edge of the 
-* clock (clk).
-*
-*
-* Other:
-* The # symbol is JSim's duplication iterator which was used to create
-* multiple copies of a single node. In this circuit, the single-bit reset
-* and clk signals must be connected to all 32 instances of the multiplexers
-* and registers. The reset#32 and clk#32 creates the necessary
-* 32 connections. Similarly, 0#32 provides 32 individual ground connections for 
-* the multiplexers' inputs.
+* Subcircuit: as32 (Adder/Subtractor with status flags)
 *******************************************************************************
-.subckt counter32 reset a[31:0] f[31:0] clk
-
-  Xadder a[31:0] f[31:0] 0 adder_sum[31:0] overflow_out[31:30] add32
-
-  Xmux[31:0] reset#32 adder_sum[31:0] 0#32 mux_out[31:0] mux2
-
-  Xreg[31:0] mux_out[31:0] clk#32 f[31:0] dreg
-
-.ends
-
-*******************************************************************************
-* Defining as32
-*******************************************************************************
-
 .subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z
-
+* Use 32 XOR gates to efficiently select between b (if op0=0) and ~b (if op0=1).
+    Xxor_op[31:0] op0#32 b[31:0] b_selected[31:0] xor2
+    Xadd32 a[31:0] b_selected[31:0] op0 fas[31:0] cout[31:30] add32
+    Xbuf_n fas[31] n buffer
+    Xxor_v cout[31] cout[30] v xor2
+* 3-level NOR tree to check if fas[31:0] is zero
+    Xnorz_l1_0 fas[3:0]   z_l1_0 nor4
+    Xnorz_l1_1 fas[7:4]   z_l1_1 nor4
+    Xnorz_l1_2 fas[11:8]  z_l1_2 nor4
+    Xnorz_l1_3 fas[15:12] z_l1_3 nor4
+    Xnorz_l1_4 fas[19:16] z_l1_4 nor4
+    Xnorz_l1_5 fas[23:20] z_l1_5 nor4
+    Xnorz_l1_6 fas[27:24] z_l1_6 nor4
+    Xnorz_l1_7 fas[31:28] z_l1_7 nor4
+    Xnorz_l2_0 z_l1_0 z_l1_1 z_l1_2 z_l1_3 z_l2_0 nor4
+    Xnorz_l2_1 z_l1_4 z_l1_5 z_l1_6 z_l1_7 z_l2_1 nor4
+    Xnorz_l3 z_l2_0 z_l2_1 z nor2
 .ends
 
 *******************************************************************************
-* Defining cmp32
+* Subcircuit: cmp32 (Comparator)
 *******************************************************************************
-
 .subckt cmp32 n v z op[2:1] fcmp[31:0]
-  
+    Xxor_lt n v n_xor_v xor2
+    Xand_lt op2 n_xor_v lt_res and2
+    Xand_eq op1 z eq_res and2
+    Xor_final lt_res eq_res fcmp[0] or2
+    Xgnd_unused[31:1] fcmp[31:1] constant0
 .ends
+
+*******************************************************************************
+* Main Circuit and Test Bench
+*******************************************************************************
+
+* ** Circuit Instantiation **
+Xas32  a[31:0] b[31:0] op0 fas[31:0] n v z as32
+Xcmp32 n v z op[2:1] fcmp[31:0] cmp32
+
+* ** Stimulus Generation **
+Wa a[31:0] nrz(0, 5, 20n, 0, 1p, 1p)
++ 0x00000000 0x55555555 0x00000000 0x55555555 -1 0x00000000 0x00000000
++ 0xAAAAAAAA 0x00000000 0xAAAAAAAA 1 -1 0x80000000 -1
++ 2 2 2 0x80000000 0x80000000 0x80000000 3 3 3 0x7FFFFFFF 0x7FFFFFFF
++ 0x7FFFFFFF 3 3 3
+
+Wb b[31:0] nrz(0, 5, 20n, 0, 1p, 1p)
++ 0x00000000 0x00000000 0x55555555 0x55555555 -1 0x00000000 -1
++ 0x00000000 0xAAAAAAAA 0xAAAAAAAA -1 1 0x80000000 -1
++ -3 -3 -3 2 2 2 5 5 5 -2 -2
++ -2 3 3 3
+
+Wop op[2:0] nrz(0, 5, 20n, 0, 1p, 1p)
++ 0b000 0b000 0b000 0b000 0b000 0b001 0b001 0b000 0b000 0b000 0b000
++ 0b000 0b000 0b001 0b011 0b101 0b111 0b011 0b101 0b111 0b011 0b101
++ 0b111 0b011 0b101 0b111 0b011 0b101 0b111
+
+* ** Simulation Control and Plotting **
+.tran 580n
+
+* Plot primary inputs for the test cases
+.plot b(op[2:0])
+.plot x(a[31:0])
+.plot x(b[31:0])
+
+* Plot primary outputs of the combined circuit
+.plot x(fas[31:0])
+.plot fcmp[0]
+
+* Plot status flags for debugging and verification
+.plot n as negative
+.plot v as overflow
+.plot z as zero
+
+.end
