@@ -1,0 +1,105 @@
+*******************************************************************************
+* LAB #2
+* - Castillo, Hanzo
+* - Jaso, Elijem
+* - Marcelino, Jaren
+*******************************************************************************
+
+.include "8clocks.jsim"
+.include "nominal.jsim"
+.include "stdcell.jsim"
+
+*******************************************************************************
+* Below is the circuit for the function OUT = ABC + DE + FG.
+* By Double Negation and De Morgan, 
+* the function becomes OUT = !( !ABC · !DE · !FG)
+* 
+* Input nodes: a, b, c, d, e, f, g 
+* (input signals mapped from clk1 to clk7, respectively)
+*
+* Output nodes: x, y, z for !ABC, !DE, and !FG, respectively.
+*
+* Final output: out is the output node for combining x y z, 
+* into the function OUT = !( !ABC · !DE · !FG)
+*
+* NAND gates are faster and have less delay compared to other gates 
+* NAND gates require fewer transistors than equivalent AND/OR designs,
+* for 2-input requiring 4 transistors (2 NMOS AND 2 PMOS),
+* and for 3-input requiring 6 transistors (3 NMOS, 3 PMOS)
+* These all contributes into the overall design having smaller area, 
+* lower power, and quick switching for CMOS logic.
+*******************************************************************************
+
+.subckt fx a b c d e f g out
+
+    Xnand1 a b c x nand3    
+    Xnand2 d e y nand2      
+    Xnand3 f g z nand2
+    
+    Xnand4 x y z out nand3
+
+.ends
+
+*******************************************************************************
+* Full adder implementation via two half-adder:
+* SUM =  A ⊕ B ⊕ Cin 
+* COUT = (A · B) + (Cin · (A ⊕ B))
+* 
+* Rewrite carry-out with double negation:
+* COUT = !(!(A · B) · !(Cin · (A ⊕ B)) ) 
+*
+* Input nodes:
+* firstBit = A 
+* secondBit = B 
+* carryIn = Cin
+*
+* Output nodes:
+* firsthalfOut = A ⊕ B
+* sum = A ⊕ B ⊕ Cin
+* nand_out1 = !(A · B)
+* nand_out2 = !(Cin · (A ⊕ B))
+* carryOut =  !(!(A · B) · !(Cin · (A ⊕ B)) ) 
+*
+* In addition to the what was mentioned about NAND gates above, NAND gates are
+* generally faster and have less delay compared to NOR gates in CMOS because
+* the PMOS arrangemnt differs,
+* as NAND gate uses series NMOS and parallel PMOS, 
+* while a NOR gate uses parallel NMOS, and series PMOS. 
+* The series PMOS will have a slower or weaker pull-up than a parallel PMOS.
+*
+* XOR gates were used for sum implementation because if you use NAND gates,
+* you would need at least need 4 NAND gates which would increase the depth 
+* in logic and cause more propagation delay. 
+*******************************************************************************
+
+.subckt fa firstBit secondBit carryIn sum carryOut 
+
+    Xxor1 firstBit secondBit firsthalfOut xor2    
+    Xnandp1 firstBit secondBit nand_out1 nand2
+
+    Xxor2 firsthalfOut carryIn sum xor2           
+    Xnand2 firsthalfOut carryIn nand_out2 nand2
+
+    Xnand3 nand_out1 nand_out2 carryOut nand2
+
+.ends 
+
+Xfunction clk1 clk2 clk3 clk4 clk5 clk6 clk7 out fx
+Xfulladder clk5 clk6 clk7 adder_sum adder_cout fa
+
+*******************************************************************************
+* .tran 640ns was chosen to capture at least one full cycle of clk7 based on
+* 8clocks.jsim, which shows clk7 having a period of 640ns (319.9ns + 319.9 ns)
+*******************************************************************************
+
+.tran 640ns
+.plot clk1
+.plot clk2
+.plot clk3
+.plot clk4
+.plot clk5
+.plot clk6
+.plot clk7
+.plot out
+.plot adder_sum
+.plot adder_cout
