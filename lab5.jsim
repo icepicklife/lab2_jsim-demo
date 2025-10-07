@@ -143,3 +143,28 @@ Wop op[2:0] nrz(0, 5, 20n, 0, 1p, 1p)
 .plot z as zero
 
 .end
+
+*******************************************************************************
+* Note that we will be using the bit inputs A and B as start node, while the
+* end node will be the fcmp[0] since it's the end output of the chained circuit
+* following the diagram.
+*
+* Proceeding with the diagram, one could note that all possible paths will go 
+* under the as32 and comparator blocks, yet a difference of levels could be seen
+* amongst the implementation of n, v, and z.
+*
+* Hence, we note that the check zero operation (z) is comprised of the chained
+* 32 OR operations to check if each of the bits is zero. Using the nor-gate 
+* implementation, it's comprised of 3 levels of gates being chained together 
+* to accommodate the incapacity of a single gate to render 32 inputs
+*
+* Hence, we could say that the zero operation path could be the longest since
+* it has the chained or-gates alongside the as32 and cmp32 gate operations
+* 
+* The path in detail shows as follows:
+*
+* A,B -> xor_bitwiseOp -> 32-bit adder -> 3-level nor tree (zero operation)
+*   -> Xand_eq (cmp32) -> Xor_final (cmp32) -> fcmp[0]
+*
+* This is assuming that the gates used have a fixed delay value
+*******************************************************************************
