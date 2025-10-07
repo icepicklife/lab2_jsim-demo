@@ -158,7 +158,7 @@ Wop op[2:0] nrz(0, 5, 20n, 0, 1p, 1p)
 * implementation, it's comprised of 3 levels of gates being chained together 
 * to accommodate the incapacity of a single gate to render 32 inputs
 *
-* Hence, we could say that the zero operation path could be the longest since
+* Therefore, we could say that the zero operation path could be the longest since
 * it has the chained or-gates alongside the as32 and cmp32 gate operations
 * 
 * The path in detail shows as follows:
