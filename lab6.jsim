@@ -1,0 +1,10 @@
+*******************************************************************************
+* LAB #5: 32-bit Adder/Subtractor and Comparator
+* - Castillo, Hanzo
+* - Jaso, Elijem
+* - Marcelino, Jaren
+*******************************************************************************
+
+.include "8clocks.jsim"
+.include "nominal.jsim"
+.include "stdcell.jsim"
