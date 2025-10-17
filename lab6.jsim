@@ -61,7 +61,25 @@
 * Below is the implementation of the bool32 subcircuit.
 *******************************************************************************
 .subckt bool32 a[31:0] b[31:0] op[3:0] fbool[31:0]
-    Xbool[31:0] a[31:0] b[31:0] op[0]#32 op[1]#32 op[2]#32 op[3]#32 fbool[31:0] mux4
+    Xbool[31:0] a[31:0] b[31:0] op0#32 op1#32 op2#32 op3#32 fbool[31:0] mux4
 .ends
 
+*******************************************************************************
+* Below is the implementation of the shift32 subcircuit.
+*******************************************************************************
+.subckt shift32 a[31:0] b[4:0] op[1:0] fshift[31:0]
+    * Sets the shift type (Logical or Arithmetic) based on op1.
+    Xstype op1 0 a31 stype_out mux2
 
+    * Reverses the bits if left shift (op0 = 0)
+    Xreverse[31:0] op0#32 a[0:31] a[31:0] reverse_out[31:0] mux2
+
+    * 5-Stage Right Shift Barrel Shifter
+    Xshiftr1[31:0] b0#32 reverse_out[31:0] stype_out reverse_out[31:1] shiftr1_out[31:0] mux2
+    Xshiftr2[31:0] b1#32 shiftr1_out[31:0] stype_out#2 shiftr1_out[31:2] shiftr2_out[31:0] mux2
+    Xshiftr4[31:0] b2#32 shiftr2_out[31:0] stype_out#4 shiftr2_out[31:4] shiftr4_out[31:0] mux2
+    Xshiftr8[31:0] b3#32 shiftr4_out[31:0] stype_out#8 shiftr4_out[31:8] shiftr8_out[31:0] mux2
+    Xshiftr16[31:0] b4#32 shiftr8_out[31:0] stype_out#16 shiftr8_out[31:16] shiftr16_out[31:0] mux2
+
+    Xreverse2[31:0] op0#32 shiftr16_out[0:31] shiftr16_out[31:0] reverse_out[31:0] mux2
+.ends
