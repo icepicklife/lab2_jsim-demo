@@ -57,7 +57,13 @@
 
 *******************************************************************************
 * Below is the implementation of the bool32 subcircuit.
-* (insert description)
+* 
+* The bool32 subcircuit is a 32-bit Bitwise Boolean Circuit that performs a logical
+* operation on the corresponding bits of 2 32-bit inputs, a and b.
+*
+* The operation of bool32 is controlled by a 4-bit input op[3:0]. This allows for
+* up to 16 different Boolean functions to be implemented, such as AND, OR, XOR, 
+* NOT, etc.
 *******************************************************************************
 .subckt bool32 a[31:0] b[31:0] op[3:0] fbool[31:0]
     Xbool[31:0] a[31:0] b[31:0] op0#32 op1#32 op2#32 op3#32 fbool[31:0] mux4
@@ -65,7 +71,17 @@
 
 *******************************************************************************
 * Below is the implementation of the shift32 subcircuit.
-* (insert description)
+* 
+* The shift32 subcircuit is a 32-bit barrel shifter capable of performing logical
+* left shifts, logical right shifts, and arithmetic right shifts.
+* 
+* The operation is controlled by the 2-bit input op[1:0] which selects the shift
+* type and shift direction, and the 5-bit shift amount b[4:0]
+*
+* This circuit is optimized to perform both left and right shifts using a single
+* 5-stage right-shift core. This is achieved with a "reverse-shift-reverse" technique
+* when a left shift is performed. This way, there is no need to implement another
+* 5-stage barrel shifter for left shifts.
 *******************************************************************************
 .subckt shift32 a[31:0] b[4:0] op[1:0] fshift[31:0]
     * Sets the shift type (Logical or Arithmetic) based on op1.
@@ -84,6 +100,21 @@
     Xreverse2[31:0] op0#32 shiftr16_out[0:31] shiftr16_out[31:0] fshift[31:0] mux2
 .ends
 
+*******************************************************************************
+* Below is the implementation of the alu32 subcircuit.
+* 
+* The alu32 subcircuit is the top-level 32-bit Arithmetic Logic Unit. It combines
+* the arithmetic/subtraction, Boolean, shifter, and comparison units into a single
+* functional block
+* 
+* Its operation is controlled by the 6-bit input alufn[5:0]. The lower bits of
+* this code are passed to the internal units to control their specific functions.
+* The upper two bits, alufn[5:4], are used to select which unit's result is passed
+* to the final output 'f'.
+* 
+* A final 4-to-1 multiplexer selects the output from one of these four units 
+* based on alufn[5:4], making that result the final output of the ALU.
+*******************************************************************************
 .subckt alu32 a[31:0] b[31:0] alufn[5:0] f[31:0]
     Xas32 a[31:0] b[31:0] alufn0 fas[31:0] n v z as32
     Xbool32 a[31:0] b[31:0] alufn[3:0] fbool[31:0] bool32
@@ -96,7 +127,6 @@
 *******************************************************************************
 * Instantiation and plot below.
 *******************************************************************************
-
 Xalu32 a[31:0] b[31:0] alufn[5:0] f[31:0] alu32
 
 Wa a[31:0] nrz(0v,5.0v,20ns,0ns,.1ns,.1ns)
@@ -120,15 +150,17 @@ Wf alufn[5:0] nrz(0v,5.0v,60ns,0ns,.1ns,.1ns)
 .plot f[31:0]
 
 *******************************************************************************
-* alu32 optimization
-* (explain how the alu32 was optimized for circuit size here)
+* ALU32 Optimization
+* 
+* The primary optimization for the alu32 lies in its modular and multiplexed 
+* architecture, which promotes hardware reuse. Intead of designing a single,
+* complex block of logic to decode all 64 possible function codes, the design
+* is divided into four independent, specialized functional units which run in 
+* parallel. The final multiplexer then simply selects the desired output.
 *
-*
-*
-*
-*
-*
-*
-*
-*
+* This approach significantly reduces circuit size and complexity because it 
+* avoids large, slow, and are-intensive decoding logic. It allows each sub-
+* unit to be individually optimized for size. For example, the ALU benefits 
+* from the area savings in the as32 unit (one adder for both add/sub) and 
+* the shift32 unit (one right-shift core for both right/left shifts).
 *******************************************************************************
