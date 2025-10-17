@@ -24,7 +24,8 @@
 .ends
 
 *******************************************************************************
-* Below is the implementation of the as32 subcircuit.
+* Below is the implementation of the as32 and cmp32 subcircuit which will be unused
+* for the alu32 subcircuit.
 *******************************************************************************
 .subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z
 * Use 32 XOR gates to efficiently select between b (if op0=0) and ~b (if op0=1).
@@ -46,9 +47,6 @@
     Xnorz_l3 z_l2_0 z_l2_1 z nor2
 .ends
 
-*******************************************************************************
-* Below is the implementation of the cmp32 subcircuit.
-*******************************************************************************
 .subckt cmp32 n v z op[2:1] fcmp[31:0]
     Xxor_lt n v n_xor_v xor2
     Xand_lt op2 n_xor_v lt_res and2
@@ -59,6 +57,7 @@
 
 *******************************************************************************
 * Below is the implementation of the bool32 subcircuit.
+* (insert description)
 *******************************************************************************
 .subckt bool32 a[31:0] b[31:0] op[3:0] fbool[31:0]
     Xbool[31:0] a[31:0] b[31:0] op0#32 op1#32 op2#32 op3#32 fbool[31:0] mux4
@@ -66,6 +65,7 @@
 
 *******************************************************************************
 * Below is the implementation of the shift32 subcircuit.
+* (insert description)
 *******************************************************************************
 .subckt shift32 a[31:0] b[4:0] op[1:0] fshift[31:0]
     * Sets the shift type (Logical or Arithmetic) based on op1.
@@ -93,6 +93,12 @@
     Xalufn[31:0] alufn4#32 alufn5#32 fas[31:0] fbool[31:0] fshift[31:0] fcmp[31:0] f[31:0] mux4
 .ends
 
+*******************************************************************************
+* Instantiation and plot below.
+*******************************************************************************
+
+Xalu32 a[31:0] b[31:0] alufn[5:0] f[31:0] alu32
+
 Wa a[31:0] nrz(0v,5.0v,20ns,0ns,.1ns,.1ns)
 + -1 0x55555555 0xAAAAAAAA 1 -2 -1 -1 0x55555555 0 -1 0x55555555 0
 + -1 0x55555555 0 -1 0x55555555 0 -1 0x55555555 0 1 -1 -1 0x55555555 0xAAAAAAAA -1
@@ -106,7 +112,6 @@ Wb b[31:0] nrz(0v,5.0v,20ns,0ns,.1ns,.1ns)
 Wf alufn[5:0] nrz(0v,5.0v,60ns,0ns,.1ns,.1ns)
 + 0 1 24 30 22 26 21 32 33 35 51 53 55
 
-Xalu32 a[31:0] b[31:0] alufn[5:0] f[31:0] alu32
 
 .tran 780ns
 .plot a[31:0]
@@ -114,3 +119,16 @@ Xalu32 a[31:0] b[31:0] alufn[5:0] f[31:0] alu32
 .plot b(alufn[5:0])
 .plot f[31:0]
 
+*******************************************************************************
+* alu32 optimization
+* (explain how the alu32 was optimized for circuit size here)
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*******************************************************************************
