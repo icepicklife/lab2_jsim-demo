@@ -81,5 +81,15 @@
     Xshiftr8[31:0] b3#32 shiftr4_out[31:0] stype_out#8 shiftr4_out[31:8] shiftr8_out[31:0] mux2
     Xshiftr16[31:0] b4#32 shiftr8_out[31:0] stype_out#16 shiftr8_out[31:16] shiftr16_out[31:0] mux2
 
-    Xreverse2[31:0] op0#32 shiftr16_out[0:31] shiftr16_out[31:0] reverse_out[31:0] mux2
+    Xreverse2[31:0] op0#32 shiftr16_out[0:31] shiftr16_out[31:0] fshift[31:0] mux2
 .ends
+
+.subckt alu32 a[31:0] b[31:0] alufn[5:0] f[31:0]
+    Xas32 a[31:0] b[31:0] alufn0 fas[31:0] n v z as32
+    Xbool32 a[31:0] b[31:0] alufn[3:0] fbool[31:0] bool32
+    Xshift32 a[31:0] b[4:0] alufn[1:0] fshift[31:0] shift32
+    Xcmp32 n v z alufn[2:1] fcmp[31:0] cmp32
+
+    Xalufn[31:0] alufn4#31 alufn5#32 fas[31:0] fbool[31:0] fshift[31:0] fcmp[31:0] mux4
+.ends
+
