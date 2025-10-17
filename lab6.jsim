@@ -1,5 +1,5 @@
 *******************************************************************************
-* LAB #5: 32-bit Adder/Subtractor and Comparator
+* LAB #6: Boolean, Shifter, and ALU
 * - Castillo, Hanzo
 * - Jaso, Elijem
 * - Marcelino, Jaren
@@ -8,3 +8,58 @@
 .include "8clocks.jsim"
 .include "nominal.jsim"
 .include "stdcell.jsim"
+
+* Full adder and 32-bit ripple-carry adder subcircuits below.
+*******************************************************************************
+.subckt fa a b c_in sum c_out
+    Xxor1 a b firsthalfOut xor2
+    Xnand1 a b nand_out1 nand2
+    Xxor2 firsthalfOut c_in sum xor2
+    Xnand2 firsthalfOut c_in nand_out2 nand2
+    Xnand3 nand_out1 nand_out2 c_out nand2
+.ends
+
+.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] c_out[31:30]
+    Xfulladd32 a[31:0] b[31:0] c_out[30:0] cin0 sum[31:0] c_out[31:0] fa
+.ends
+
+*******************************************************************************
+* Below is the implementation of the as32 subcircuit.
+*******************************************************************************
+.subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z
+* Use 32 XOR gates to efficiently select between b (if op0=0) and ~b (if op0=1).
+    Xxor_op[31:0] op0#32 b[31:0] b_selected[31:0] xor2
+    Xadd32 a[31:0] b_selected[31:0] op0 fas[31:0] cout[31:30] add32
+    Xbuf_n fas[31] n buffer
+    Xxor_v cout[31] cout[30] v xor2
+* 3-level NOR tree to check if fas[31:0] is zero
+    Xnorz_l1_0 fas[3:0]   z_l1_0 nor4
+    Xnorz_l1_1 fas[7:4]   z_l1_1 nor4
+    Xnorz_l1_2 fas[11:8]  z_l1_2 nor4
+    Xnorz_l1_3 fas[15:12] z_l1_3 nor4
+    Xnorz_l1_4 fas[19:16] z_l1_4 nor4
+    Xnorz_l1_5 fas[23:20] z_l1_5 nor4
+    Xnorz_l1_6 fas[27:24] z_l1_6 nor4
+    Xnorz_l1_7 fas[31:28] z_l1_7 nor4
+    Xnorz_l2_0 z_l1_0 z_l1_1 z_l1_2 z_l1_3 z_l2_0 nor4
+    Xnorz_l2_1 z_l1_4 z_l1_5 z_l1_6 z_l1_7 z_l2_1 nor4
+    Xnorz_l3 z_l2_0 z_l2_1 z nor2
+.ends
+
+*******************************************************************************
+* Below is the implemntation of the cmp32 subcircuit.
+*******************************************************************************
+.subckt cmp32 n v z op[2:1] fcmp[31:0]
+    Xxor_lt n v n_xor_v xor2
+    Xand_lt op2 n_xor_v lt_res and2
+    Xand_eq op1 z eq_res and2
+    Xor_final lt_res eq_res fcmp[0] or2
+    Xgnd_unused[31:1] fcmp[31:1] constant0
+.ends
+
+*******************************************************************************
+* Below is the implemntation of the bool32 subcircuit.
+*******************************************************************************
+
+
+
