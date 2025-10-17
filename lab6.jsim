@@ -47,7 +47,7 @@
 .ends
 
 *******************************************************************************
-* Below is the implemntation of the cmp32 subcircuit.
+* Below is the implementation of the cmp32 subcircuit.
 *******************************************************************************
 .subckt cmp32 n v z op[2:1] fcmp[31:0]
     Xxor_lt n v n_xor_v xor2
@@ -58,8 +58,10 @@
 .ends
 
 *******************************************************************************
-* Below is the implemntation of the bool32 subcircuit.
+* Below is the implementation of the bool32 subcircuit.
 *******************************************************************************
-
+.subckt bool32 a[31:0] b[31:0] op[3:0] fbool[31:0]
+    Xbool[31:0] a[31:0] b[31:0] op[0]#32 op[1]#32 op[2]#32 op[3]#32 fbool[31:0] mux4
+.ends
 
 
