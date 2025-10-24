@@ -51,3 +51,6 @@ INPUT:
 | OUTPUT marks the memory block where the output will appear.
 | Nothing follows the label because the output will be written by the program.
 OUTPUT:
+
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
