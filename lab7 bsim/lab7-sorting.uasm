@@ -6,7 +6,13 @@
 
 .include beta.uasm
 
+        LD(r31, INPUT, r0)  | r0 is used for the array length
 
+LOOP:   ADDC(r1, 4, r1)      | r1 is used for the address of arr[i]
+        ADDC(r2, 8, r2)      | r2 is used for the address of arr[i + 1]
+        LD(r1, INPUT, r3)
+        LD(r2, INPUT, r4)
+        CMPLT()
 
 
 
