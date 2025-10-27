@@ -1,0 +1,66 @@
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+| Castillo, Hanzo
+| Jaso, Elijem
+| Marcelino, Jaren
+| 
+| LAB 7 - Symmetric Stream Cipher with a Pre-generated Keystream
+|
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+.include beta.uasm
+
+        LD(PLAINTEXT, r0)       | r0 = N (plaintext length)
+        LD(KEY, r1)             | r1 = M (key length)
+        CMOVE(0, r2)            | r2 = i (initialize loop index i = 0)
+
+LOOP:
+        CMPLT(r2, r0, r10)      | check if i < N
+        BEQ(r10, DONE)          | if (i >= N), branch to DONE
+
+        | Calculate key_index
+        DIV(r2, r1, r13)        | r13 = i / M
+        MUL(r13, r1, r14)       | r14 = (i / M) * M
+        SUB(r2, r14, r3)        | r3 = key_index = i - ((i / M) * M)
+
+        | Load key_val
+        MULC(r3, 4, r10)        | r10 = key_index * 4 (get byte offset)
+        ADDC(r10, KEY + 4, r11) | r11 = address of KEY[key_index]
+                                | (+4 to skip the M value)
+        LD(r11, 0, r4)          | r4 = key_val (load the key)
+
+        | Load pt_val
+        MULC(r2, 4, r10)        | r10 = i * 4 (get byte offset)
+        ADDC(r10, PLAINTEXT + 4, r11)| r11 = address of PLAINTEXT[i]
+                                | (+4 to skip the N value)
+        LD(r11, 0, r5)          | r5 = pt_val (load the plaintext value)
+
+        | Encrypt and Store
+        XOR(r5, r4, r6)         | r6 = pt_val ^ key_val (XOR operation)
+        
+        MULC(r2, 4, r10)        | r10 = i * 4 (get byte offset)
+        ADDC(r10, ENCRYPTED, r11)| r11 = address of ENCRYPTED[i]
+        ST(r6, 0, r11)          | stores the encrypted value
+
+        | --- Next iteration ---
+        ADDC(r2, 1, r2)         | i = i + 1
+        BR(LOOP)                | returns to LOOP
+
+DONE:
+        HALT()                  | Finish execution
+
+. = 0x100
+
+KEY:
+        LONG(2)
+        LONG(42)
+        LONG(67)
+
+PLAINTEXT:
+        LONG(5)
+        LONG(72)
+        LONG(69)
+        LONG(76)
+        LONG(76)
+        LONG(79)
+
+ENCRYPTED:
