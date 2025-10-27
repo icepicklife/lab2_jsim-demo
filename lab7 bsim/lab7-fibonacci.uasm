@@ -11,11 +11,11 @@
         LD(fib0, r1)    | r1 = 0    
         LD(fib1, r2)    | r2 = 1    
 
-        CMPEQ(r0, r31, r13)
+        CMPEQ(r0, r31, r13) | if INPUT == 0, return []
         BNE(r13, done)
         ST(r1, 0, r3)   | OUTPUT[0] = 0
 
-        CMPEQC(r0, 1, r14)
+        CMPEQC(r0, 1, r14) | if INPUT == 1, return [0]
         BNE(r14, done)
         ST(r2, 4, r3)   | OUTPUT[1] = 1  
 
