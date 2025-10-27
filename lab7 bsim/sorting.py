@@ -2,7 +2,6 @@ def sort(n, arr):
     # Bubble sort
     # Traverse through all array elements
     for i in range(n):
-        swapped = False
 
         # Last i elements are already in place
         for j in range(0, n-i-1):
@@ -12,9 +11,6 @@ def sort(n, arr):
             # than the next element
             if arr[j] > arr[j+1]:
                 arr[j], arr[j+1] = arr[j+1], arr[j]
-                swapped = True
-        if (swapped == False):
-            break
 
     new_arr = [n] + arr
         

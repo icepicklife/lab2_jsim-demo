@@ -6,19 +6,38 @@
 
 .include beta.uasm
 
-        LD(r31, INPUT, r0)  | r0 is used for the array length
+                LD(INPUT, r0)           | r0 = N
+                SUBC(r0, 1, r1)         | r1 = N - 1 (upper bound of outer loop)
 
-LOOP:   ADDC(r1, 4, r1)      | r1 is used for the address of arr[i]
-        ADDC(r2, 8, r2)      | r2 is used for the address of arr[i + 1]
-        LD(r1, INPUT, r3)
-        LD(r2, INPUT, r4)
-        CMPLT()
+OuterLoop:      CMPLEC(r1, 0, r10)      | checks if outer loop count becomes less than 0
+                BT(r10, Done)
 
+                ADDC(r31, 0, r2)        | initialize inner loop index, i
 
+InnerLoop:      SUB(r0, r2, r3)         | r3 = N - i
+                SUBC(r3, 1, r3)         | r3 = N - i - 1 (sets the upper bound of inner loop)
+                CMPLEC(r3, 0, r10)      | checks if end of inner loop has been reached
+                BT(r10, InnerEnd)       | goes to branch InnerEnd if true
 
+                MULC(r2, 4, r4)         | we obtain the address of i by multiplying r2 * 4 since the addresses are incremented by 4 bytes
+                ADDC(r4, INPUT + 4, r4) | +4 since the first number of the array is the array length
 
+                LD(r4, 0, r5)           | gets the first number
+                LD(r4, 4, r6)           | gets the second number
 
+                CMPLE(r5, r6, r7)       | checks if the first number is less than the second number
+                BT(r7, NoSwap)          | goes to branch NoSwap if true
 
+                ST(r6, 0, r4)           | swaps the two numbers since the first number is greater
+                ST(r5, 4, r4)
+
+NoSwap:         ADDC(r2, 1, r2)         | increments i
+                BR(InnerLoop)           | returns to InnerLoop
+
+InnerEnd:       SUBC(r1, 1, r1)         | decrements upper bound of outer loop
+                BR(OuterLoop)           | returns to OuterLoop
+
+Done:           HALT()
 
 . = 0x19C
 
@@ -31,3 +50,5 @@ INPUT:
         LONG(4)
         LONG(9)
         LONG(3)
+
+OUTPUT:
