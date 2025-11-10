@@ -1,0 +1,52 @@
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+| Castillo, Hanzo
+| Jaso, Elijem
+| Marcelino, Jaren
+| 
+| LAB 7 - Fibonacci Sequence
+|
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+.include beta.uasm
+
+        LD(INPUT, r0)   | r0 = input number
+        LD(OUTPUT, r3)  | r3 = OUTPUT array
+        LD(fib0, r1)    | r1 = 0    
+        LD(fib1, r2)    | r2 = 1    
+
+        CMPEQ(r0, r31, r13) | if INPUT == 0, return []
+        BNE(r13, done)
+        ST(r1, 0, r3)   | OUTPUT[0] = 0
+
+        CMPEQC(r0, 1, r14) | if INPUT == 1, return [0]
+        BNE(r14, done)
+        ST(r2, 4, r3)   | OUTPUT[1] = 1  
+
+        ADDC(r31, 2, r4)      | i = 2 (since there are 2 numbers) 
+
+fibo_loop:
+        CMPLE(r0, r4, r10)      | while i < n
+        BNE(r10, done)          | move to done if i >= n
+
+        ADD(r2, r1, r5)         | r5 = r1 + r2
+        MULC(r4, 4, r7)         | offset = i * 4
+        ADD(r3, r7, r8)         | r8 = OUTPUT + offset
+        ST(r5, 0, r8)           | stores r5 (new value) to the offset
+
+        ADDC(r2, 0, r1)         | moves previous num to first index addend (to give space to new value)
+        ADDC(r5, 0, r2)         | moves new value to second index addend
+        ADDC(r4, 1, r4)         | i++
+        BR(fibo_loop)
+
+done:
+        HALT()
+
+fib0:
+        LONG(0)
+fib1:
+        LONG(1)
+
+INPUT:
+        LONG(7)
+
+OUTPUT:
