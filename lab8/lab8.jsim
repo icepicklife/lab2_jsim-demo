@@ -50,7 +50,7 @@
 *   2nd line = read port for LD instructions (memrd)
 *   3rd line = write port for ST instructions (memwd, controlled by wr signal)
 *   5th line = the memory statement itself
-* TODO: Copy your Beta program's BSim assembler output (.bin file) to your JSim
+* TODO: Copy your Beta program's BSim assembler output (.bin file) to your JSim DONEEEEE
 *       folder and change the file= parameter accordingly!
 *******************************************************************************
 Xmemory  vdd  0    0   pc[8:2]    inst[31:0]
@@ -78,9 +78,9 @@ Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
 
 *******************************************************************************
 * Temporarily connect werf_ directly to werf.
-* TODO: You must replace this with circuitry so that if wa[4:0] = 0b11111 (31),
+* TODO: You must replace this with circuitry so that if wa[4:0] = 0b11111 (31),   SPECS #1
 *       the werf_ signal is forced OFF; otherwise, it should pass through the
-*       original werf signal.
+*       original werf signal.                                                  
 *******************************************************************************
 .connect werf werf_
 
@@ -93,7 +93,7 @@ Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
 *   2nd line = the memory statement itself
 *   succeeding lines = the control signals (14 bits each) for all 64 opcodes
 *                      times 2 (first half is for z = 0, second half for z = 1)
-* TODO: Fill these lines with the proper control signals for each opcode!
+* TODO: Fill these lines with the proper control signals for each opcode!         SPECS #2
 *******************************************************************************
 Xcontrol  vdd  0  0  z opcode[5:0]  control[13:0]
 + $memory width=14 nlocations=128 contents=(
