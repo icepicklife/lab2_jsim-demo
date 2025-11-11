@@ -245,7 +245,9 @@ Xjdisplayb wr_werfs[2:0]    wr werf werf_          join
 *
 *
 *
-* c. Does your Lab 7 program provide good functional coverage?
+* c. Does your Lab 7 program (that you yourself provided) represent a
+* good number of opcodes that your control logic supports? What’s
+* the functional coverage?
 * One of our Lab 7 programs, Fibonacci numbers, was our chosen Lab 7 program to
 * use for our test case. For this to happen, we modified one line of code, which
 * was MULC(r4, 4, r7) to SHLC(r4, 4, r7) as MULC is treated as an invalid opcode
@@ -257,10 +259,10 @@ Xjdisplayb wr_werfs[2:0]    wr werf werf_          join
 * only uses about 10 of them. It does not test other opcodes such as SUB, SUBC,
 * AND, OR, XOR, CMPLT, JMP and others.
 *
-* More specifically, we our Xcontrol logic followed the opcode table at Slide 26.
+* More specifically, our Xcontrol logic followed the opcode table at Slide 26.
 * It has: ADD, ADDC, AND, ANDC, BEQ, BNE, CMPEQ, CMPEQC, CMPLE, CMPLEC, CMPLT, 
 * CMPLTC, JMP, LD, OR, ORC, SHL, SHLC, SHR, SHRC, SRA, SRAC, ST, SUB, SUBC, XOR,
-* XORC, HALT
+* XORC, HALTU
 *
 * Our Fibonacci program only has:
 * LD, CMPEQ, BNE, ST, CMPEQC, ADDC, CMPLE, ADD, SHLC, BEQ, HALT
