@@ -29,7 +29,7 @@ fibo_loop:
         BNE(r10, done)          | move to done if i >= n
 
         ADD(r2, r1, r5)         | r5 = r1 + r2
-        MULC(r4, 4, r7)         | offset = i * 4
+        SHLC(r4, 4, r7)         | offset = i * 4
         ADD(r3, r7, r8)         | r8 = OUTPUT + offset
         ST(r5, 0, r8)           | stores r5 (new value) to the offset
 
