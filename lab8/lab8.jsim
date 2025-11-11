@@ -2,7 +2,7 @@
 * Lab 8: Memory Devices and Control Logic
 * - Castillo, Hanzo Ricardo
 * - Jaso, Elijem Timothy
-* - Marcelino, Jaren Matthew
+* - Marcelino, Jaren
 *******************************************************************************
 
 .include "8clocks.jsim"
