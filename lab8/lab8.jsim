@@ -82,7 +82,14 @@ Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
 *       the werf_ signal is forced OFF; otherwise, it should pass through the
 *       original werf signal.                                                  
 *******************************************************************************
-.connect werf werf_
+
+* Xcheck_r31 checks if wa[4:0] != 0b11111 by using nand5. This outputs 1 when
+* wa[4:0] != 0b11111, and 0 otherwise.
+
+Xcheck_r31 wa[4] wa[3] wa[2] wa[1] wa[0] is_r31 nand5
+
+* Xf_werf checks if BOTH werf and is_r31 are true. 
+Xf_werf werf is_r31 werf_ and2
 
 *******************************************************************************
 * Xcontrol is a read-only memory (ROM) that defines what to feed into the
