@@ -2,7 +2,7 @@
 * Lab 8: Memory Devices and Control Logic
 * - Castillo, Hanzo Ricardo
 * - Jaso, Elijem Timothy
-* - Marcelino, Jaren Matthew
+* - Marcelino, Jaren
 *******************************************************************************
 
 .include "8clocks.jsim"
@@ -222,3 +222,56 @@ Xjdisplayb wr_werfs[2:0]    wr werf werf_          join
 .plot d(mema[8:0])
 .plot sd(memrd[31:0])
 .plot sd(memwd[31:0])
+
+*******************************************************************************
+* a. What is the true purpose of the additional Z input in the Xcontrol block?
+* A: The Z input is for the conditional branch instructions like BEQ and BNE.
+* The control logic's output changes based on both the instruction (opcode) and
+* the result of a previous comparison. The Z signal provides this result, 
+* showing whether the rd1 value is 0.
+* For example, for a BEQ instruction, if Z is 1 (rd1 is 0), the control logic
+* outputs PCSEL = 01 to take the branch and if Z is 0, PCSEL = 00 which is to
+* continue. 
+* For a BNE instruction, the logic is reversed wherein if Z is 0 (rd1 is not 0),
+* the control logic outputs PCSEL = 01 to the branch.
+* The Z input allows a single opcode (like BEQ or BNE) to produce two different
+* sets of control signals, depending on the datapath's state
+*
+*
+*
+* b. What is the true purpose of setting the invalid instructions' control
+* logic output to 0b11000000000000?
+* A: The 14-bit value is the exact same set of control signals used for the 
+* HALT instruction
+*
+*
+*
+*
+* c. Does your Lab 7 program (that you yourself provided) represent a
+* good number of opcodes that your control logic supports? What’s
+* the functional coverage?
+* One of our Lab 7 programs, Fibonacci numbers, was our chosen Lab 7 program to
+* use for our test case. For this to happen, we modified one line of code, which
+* was MULC(r4, 4, r7) to SHLC(r4, 4, r7) as MULC is treated as an invalid opcode
+* and treated as HALT as per the ROM table.
+*
+* However, it still does not provide good functional coverage. Our Fibonacci 
+* program may run without issues, however, it has limited instructions. Our 
+* Xcontrol ROM supports over 25 different instructions and our Fibonacci program 
+* only uses about 10 of them. It does not test other opcodes such as SUB, SUBC,
+* AND, OR, XOR, CMPLT, JMP and others.
+*
+* More specifically, our Xcontrol logic followed the opcode table at Slide 26.
+* It has: ADD, ADDC, AND, ANDC, BEQ, BNE, CMPEQ, CMPEQC, CMPLE, CMPLEC, CMPLT, 
+* CMPLTC, JMP, LD, OR, ORC, SHL, SHLC, SHR, SHRC, SRA, SRAC, ST, SUB, SUBC, XOR,
+* XORC, HALTU
+*
+* Our Fibonacci program only has:
+* LD, CMPEQ, BNE, ST, CMPEQC, ADDC, CMPLE, ADD, SHLC, BEQ, HALT
+*******************************************************************************
+
+
+
+
+
+
