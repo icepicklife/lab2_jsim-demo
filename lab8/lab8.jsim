@@ -257,10 +257,9 @@ Xjdisplayb wr_werfs[2:0]    wr werf werf_          join
 * only uses about 10 of them. It does not test other opcodes such as SUB, SUBC,
 * AND, OR, XOR, CMPLT, JMP and others.
 *
-* More specifically, our Xcontrol logic followed the opcode table at Slide 26.
-* It has: ADD, ADDC, AND, ANDC, BEQ, BNE, CMPEQ, CMPEQC, CMPLE, CMPLEC, CMPLT, 
+* Our ROM supports : ADD, ADDC, AND, ANDC, BEQ, BNE, CMPEQ, CMPEQC, CMPLE, CMPLEC, CMPLT, 
 * CMPLTC, JMP, LD, OR, ORC, SHL, SHLC, SHR, SHRC, SRA, SRAC, ST, SUB, SUBC, XOR,
-* MULC, XORC, HALTU
+* MULC, XORC, HALT
 *
 * Our Fibonacci program only has:
 * LD, CMPEQ, BNE, ST, CMPEQC, ADDC, CMPLE, ADD, MULC, BEQ, HALT
