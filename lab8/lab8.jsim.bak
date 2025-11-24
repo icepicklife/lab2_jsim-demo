@@ -248,7 +248,7 @@ Xjdisplayb wr_werfs[2:0]    wr werf werf_          join
 *
 *
 * c. Does your Lab 7 program (that you yourself provided) represent a
-* good number of opcodes that your control logic supports? WhatÃ¢ÂÂs
+* good number of opcodes that your control logic supports? Whatâs
 * the functional coverage?
 * One of our Lab 7 programs, Fibonacci numbers, was our chosen Lab 7 program to
 * use for our test case. Fibonacci evidently does not provide good functional coverage. Our Fibonacci 
