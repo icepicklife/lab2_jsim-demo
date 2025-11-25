@@ -9,6 +9,21 @@
 .include "nominal.jsim"
 .include "stdcell.jsim"
 
+*******************************************************************************
+* Helper Subcircuits
+* - reg32 - insert description
+*******************************************************************************
+
+* 32-bit Register (used for the PC)
+.subckt reg32 clk din[31:0] q[31:0]
+    Xdreg[31:0] clk din[31:0] q[31:0] dreg
+.ends
+
+* Fanout helper (used for Sign Extension of C)
+.subckt fanout16 in out[15:0]
+    Xbuf in out[15:0] buffer
+.ends
+
 * Full adder and 32-bit ripple-carry adder subcircuits
 *******************************************************************************
 .subckt fa a b c_in sum c_out
@@ -82,7 +97,7 @@
 * alu32 subcircuit
 *******************************************************************************
 
-.subckt alu32 a[31:0] b[31:0] alufn[5:0] f[31:0]
+.subckt alu32 a[31:0] b[31:0] alufn[5:0] f[31:0] z
     Xas32 a[31:0] b[31:0] alufn0 fas[31:0] n v z as32
     Xbool32 a[31:0] b[31:0] alufn[3:0] fbool[31:0] bool32
     Xshift32 a[31:0] b[4:0] alufn[1:0] fshift[31:0] shift32
