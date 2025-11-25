@@ -147,3 +147,39 @@ Xcontrol  vdd  0  0  z opcode[5:0]  control[13:0]
 +   0b00010100000001 0b00010100000101 0b00010100001001 0b11000000000000 0b00010111001101 0b00010111010101 0b00010111011101 0b11000000000000
 +   0b00010101000101 0b00010101011101 0b00010101011001 0b11000000000000 0b00010110000001 0b00010110000101 0b00010110001101 0b11000000000000
 + )
+
+*******************************************************************************
+* INSTRUCTION FETCH STAGE
+*******************************************************************************
+
+* 1. PC Register
+Xpc_reg clk next_pc[31:0] pc[31:0] reg32
+
+* 2. Constant 4
+Xconst4 four[31:0] constant00000000000000000000000000000100
+
+* 3. PC + 4 Adder
+* This calculates the address of the next instruction
+Xaddpc4 pc[31:0] four[31:0] 0 pc_plus_4[31:0] cin_dump1 add32
+
+* 4. Branch Offset Calculation
+* 4a. Sign Extending C
+* We use the buffer to get the sign bit
+Xsign_ext c[15] c_sign_bit buffer
+Xsext_high c_sign_bit c_extended[31:16] fanout16
+Xsext_low c[15:0] c_extended[15:0] join
+
+* 4b. Shift left 2 (Branch Offset)
+* Logic: branch_offset = c_extended << 2
+Xshift_high c_extended[29:0] branch_offset[31:2] join
+Xshift_low0 0 branch_offset[0] join
+Xshift_low1 0 branch_offset[1] join
+
+* 5. Branch Target Adder
+Xadd_branch pc_plus_4[31:0] branch_offset[31:0] 0 branch_target[31:0] cin_dump2 add32
+
+* 6. PCSEL MUX 
+* 00: PC + 4 (Next Instruction)
+* 01: Branch Target (PC + 4 + 4*C)
+* 10: Jump Target (Address from Register File RD1)
+* 11: 
