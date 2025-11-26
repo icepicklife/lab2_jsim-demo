@@ -1,0 +1,302 @@
+*******************************************************************************
+* - Amante, Noah
+* - Cacho, Robin
+* - Pararuan, Coeli
+*******************************************************************************
+.include "8clocks.jsim"
+.include "nominal.jsim"
+.include "stdcell.jsim"
+
+* FULL ADDER AND 32-BIT RIPPLE ADDER
+.subckt fa a b c_in sum c_out
+  * Sum
+  Xsum1 a b n1 xor2
+  Xsum2 c_in n1 sum xor2
+
+  * Carry
+  Xc1 a b n2 nand2
+  Xc2 c_in n1 n3 nand2
+  Xc3 n2 n3 c_out nand2 
+.ends
+
+.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] cout[31:30]
+  Xfa a[31:0] b[31:0] cout[30:0] cin0 sum[31:0] cout[31:0] fa
+.ends
+
+* 32-BIT ADDER/SUBTRACTOR  
+.subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z 
+    * Interpret the opcode 
+    Xinvb b[31:0] invb[31:0] inverter
+    Xmux2 op0#32 b[31:0] invb[31:0] b_mux[31:0] mux2
+    Xadd32 a[31:0] b_mux[31:0] op0 fas[31:0] cout[31:30] add32 
+    
+    * === Flags for Negative, check last bit=== 
+    .connect fas31 n 
+
+    * === Flags for Overflow, last two bits cannot be same====  
+    Xv cout31 cout30 v xor2 
+
+    * === Flags for Zero === 
+    Xz1 fas[31:24] fas[23:16] fas[15:8] fas[7:0] nor_out[7:0] nor4
+    Xz2 nor_out[7:4] nor_out[3:0] nand_out[1:0] nand4
+    Xz3 nand_out[1:0] z nor2  
+.ends
+
+* 32-BIT COMPARATOR
+.subckt cmp32 n v z op[2:1] fcmp[31:0] 
+    Xequal z op1 equal nand2
+    Xxor n v nxorv xor2
+    Xless op2 nxorv less nand2
+    Xlesseq equal less fcmp0 nand2
+    .connect 0 fcmp[31:1]
+.ends 
+
+* 32-BIT BOOLEAN  
+.subckt bool32 a[31:0] b[31:0] op[3:0] fbool[31:0] 
+    Xmux4 a[31:0] b[31:0] op0#32 op1#32 op2#32 op3#32 fbool[31:0] mux4
+.ends 
+
+* 32-BIT SHIFT SUBCIRCUIT 
+.subckt shift32 a[31:0] b[4:0] op[1:0] fshift[31:0]
+    XmuxLorR op0#32 a[0:31] a[31:0] val[31:0] mux2
+    Xsign op1 a31 f and2
+
+    Xmux2shift16 b4#32 val[31:0] f#16 val[31:16] shifted16_[31:0] mux2
+    Xmux2shift8 b3#32 shifted16_[31:0] f#8 shifted16_[31:8] shifted8_[31:0] mux2
+    Xmux2shift4 b2#32 shifted8_[31:0] f#4 shifted8_[31:4] shifted4_[31:0] mux2
+    Xmux2shift2 b1#32 shifted4_[31:0] f#2 shifted4_[31:2] shifted2_[31:0] mux2
+    Xmux2shift1 b0#32 shifted2_[31:0] f#1 shifted2_[31:1] shift[31:0] mux2
+
+    Xmux2 op0#32 shift[0:31] shift[31:0] fshift[31:0] mux2
+.ends
+
+* 32-BIT ARITHEMTIC LOGIC UNIT SUBCIRCUIT 
+.subckt alu32 a[31:0] b[31:0] alufn[5:0] f[31:0]
+    Xas32 a[31:0] b[31:0] alufn0 as_out[31:0] n v z as32
+    Xshift32 a[31:0] b[4:0] alufn[1:0] shift_out[31:0] shift32
+    Xbool32 a[31:0] b[31:0] alufn[3:0] bool_out[31:0] bool32
+    Xcmp32 n v z alufn[2:1] cmp_out[31:0] cmp32
+    * 100 000  
+    Xselect alufn5#32 alufn4#32 as_out[31:0] shift_out[31:0] bool_out[31:0] cmp_out[31:0] f[31:0] mux4
+.ends
+
+*******************************************************************************
+* Xmemory is a 512-byte main memory containing both user instructions and data.
+*   1st line = read port for the next instruction to process (inst)
+*   2nd line = read port for LD instructions (memrd)
+*   3rd line = write port for ST instructions (memwd, controlled by wr signal)
+*   5th line = the memory statement itself
+*******************************************************************************
+Xmemory  vdd  0    0   pc[8:2]    inst[31:0]
++        vdd  0    0   mema[8:2]  memrd[31:0]
++        0    clk  wr  mema[8:2]  memwd[31:0]
++ $memory width=32 nlocations=128 file="lab7.bin"
+
+*******************************************************************************
+* Xregisters is a register memory device to store your Beta registers r0 - r31.
+*   1st line = read port for rd1_
+*   2nd line = read port for rd2_
+*   3rd line = write port for wd (controlled by werf_ signal)
+*   4th line = the memory statement itself
+*   succeeding lines = initial values of the registers
+*******************************************************************************
+Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
++           vdd  0    0      ra2_[4:0]  rd2_[31:0]
++           0    clk  werf_  wa[4:0]    wd[31:0]
++ $memory width=32 nlocations=32 contents=(
++   0 0 0 0 0 0 0 0
++   0 0 0 0 0 0 0 0
++   0 0 0 0 0 0 0 0
++   0 0 0 0 0 0 0 0
++ )
+
+* Connect werf to _werf 
+Xand4 wa[4:1] out1 and4
+Xand2 wa0 out1 out2 and2
+Xmux out2 werf 0 werf_ mux2
+
+*******************************************************************************
+* Xcontrol is a read-only memory (ROM) that defines what to feed into the
+* control signal lines of your final Beta circuit, depending on what opcode
+* was read from your instruction memory (along with an additional signal "z"
+* signifying the evaluation result of a BEQ or BNE instruction).
+*   1st line = read port w/ 7 address lines (z + 6-bit opcode) + 14 data lines
+*   2nd line = the memory statement itself
+*   succeeding lines = the control signals (14 bits each) for all 64 opcodes
+*                      times 2 (first half is for z = 0, second half for z = 1)
+* TODO: Fill these lines with the proper control signals for each opcode!
+*******************************************************************************
+Xcontrol  vdd  0  0  z opcode[5:0]  control[13:0]
++ $memory width=14 nlocations=128 contents=(
++ 0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000
++ 0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000
++ 0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000
++ 0b00011000000001	0b00110000000010	0b11000000000000	0b10000000000001	0b11000000000000	0b00000000000001	0b01000000000001	0b11000000000000
++ 0b00000100000001	0b00000100000101	0b11000000000000	0b11000000000000	0b00000111001101	0b00000111010101	0b00000111011101	0b11000000000000
++ 0b00000101100001	0b00000101111001	0b00000101011001	0b11000000000000	0b00000110000001	0b00000110000101	0b00000110001101	0b11000000000000
++ 0b00010100000001	0b00010100000101	0b11000000000000	0b11000000000000	0b00010111001101	0b00010111010101	0b00010111011101	0b11000000000000
++ 0b00010101100001	0b00010101111001	0b00010101011001	0b11000000000000	0b00010110000001	0b00010110000101	0b00010110001101	0b11000000000000
++						
++ 0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000
++ 0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000
++ 0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000	0b11000000000000
++ 0b00011000000001	0b00110000000010	0b11000000000000	0b10000000000001	0b11000000000000	0b01000000000001	0b00000000000001	0b11000000000000
++ 0b00000100000001	0b00000100000101	0b11000000000000	0b11000000000000	0b00000111001101	0b00000111010101	0b00000111011101	0b11000000000000
++ 0b00000101100001	0b00000101111001	0b00000101011001	0b11000000000000	0b00000110000001	0b00000110000101	0b00000110001101	0b11000000000000
++ 0b00010100000001	0b00010100000101	0b11000000000000	0b11000000000000	0b00010111001101	0b00010111010101	0b00010111011101	0b11000000000000
++ 0b00010101100001	0b00010101111001	0b00010101011001	0b11000000000000	0b00010110000001	0b00010110000101	0b00010110001101	0b11000000000000 
++ )
+
+.subckt join S T
+  .connect S T
+.ends
+
+*******************************************************************************
+* The following .connect statements define what control signal goes to which
+* of the 14 bits of the control ROM's output. The bits are ordered as they
+* appear in the control logic diagram of your 50.01 slides.
+*******************************************************************************
+Xjcontrola control[13:12] pcsel[1:0] join
+Xjcontrolb control11      ra2sel     join
+Xjcontrolc control10      bsel       join
+Xjcontrold control[9:8]   wdsel[1:0] join
+Xjcontrole control[7:2]   alufn[5:0] join 
+* Xjcontrolf control1       wr         join
+* Xjcontrolg control0       werf       join
+
+Xwr_init reset control1 0 wr mux2
+Xwerf_init reset control0 0 werf mux2
+
+*******************************************************************************
+* Also connect our instruction signal lines to our opcode, rc, ra, rb, and c.
+*******************************************************************************
+Xjinsta inst[31:26] opcode[5:0] join
+Xjinstb inst[25:21] rc[4:0]     join
+Xjinstc inst[20:16] ra[4:0]     join
+Xjinstd inst[15:11] rb[4:0]     join
+Xjinste inst[15:0]  c[15:0]     join
+
+*******************************************************************************
+* Connecting the inputs of the register
+*******************************************************************************
+
+* ra to ra1 connection
+Xra_to_ra1 ra[4:0] ra1_[4:0] join
+
+* ra2sel multiplexer for rb and rc to know what to feed to ra2
+Xra2selmux ra2sel#5 rb[4:0] rc[4:0] ra2_[4:0] mux2 
+
+* rc to WA connection
+Xrc_to_WA rc[4:0] wa[4:0] join
+
+* werf to we connection
+.connect werf_ we 
+
+* rd1 to jt connection
+Xrd1_to_jt rd1_[31:0] jt[31:0] join
+
+* rd1 to z connection
+* If ra = 0, z = 1; otherwise, z = 0
+Xnor4 rd1_[31:0] nor4o[7:0] nor4
+Xnand4 nor4o[7:0] nand4o[1:0] nand4
+Xnor2 nand4o[1:0] z nor2
+
+* bsel multiplexer for c and rd2 to know what to feed to alu's b input
+* The 16-bit constant is sign-extended to 32 bits
+Xbselmux bsel#32 rd2_[31:0] c15#16 c[15:0] b[31:0] mux2
+
+* rd2 to memwd connection
+Xrd2_to_wd rd2_[31:0] memwd[31:0] join
+
+* rd1 to alu's a input connection
+Xrd1_to_a rd1_[31:0] a[31:0] join
+
+* alu operation
+Xalu a[31:0] b[31:0] alufn[5:0] alu_output[31:0] alu32 
+
+* alu to wdsel connection
+Xwdselmux wdsel0#32 wdsel1#32 pc_plus[31:0] alu_output[31:0] memrd[31:0] 0#32 wd[31:0] mux4 
+
+* alu output to mema
+Xalu_to_mema alu_output[31:0] mema[31:0] join
+
+.connect clk3 clk
+
+* Reset logic
+Wreset reset nrz(0, 5, 20ns, 1ns, 0.1ns, 0.1ns)
++ 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+* <PC> + 4
+Xpc_plus_4 pc[31:0] 0#29 vdd 0#2 0 pc_plus[31:0] pc_out[31:30] add32
+
+* Branch Logic (<PC> + 4 + 4C)
+Xadd32 pc_plus[31:0] c15#14 c[15:0] 0#2 0 pc_branch[31:0] bc_out[31:30] add32 
+
+* Select which value goes into PC
+* If PCSEL = ...
+*      0 (00) -> <PC> +4
+*      1 (01) -> Branch
+*      2 (10) -> JT
+*      3 (11) -> 0#32
+Xpcselmux pcsel0#32 pcsel1#32 pc_plus[31:0] pc_branch[31:0] jt[31:0] 0#32 pc_mux[31:0] mux4
+
+Xresetpc reset#32 pc_mux[31:0] 0#32 pc_mux_reset[31:0] mux2
+
+xpc_reg pc_mux_reset[31:0] clk#32 pc[31:0] dreg
+
+* Xjpc clk[8:2] pc[8:2] join
+
+* .connect 0 pc[31:9]
+* .connect 0 pc[1:0]
+
+*******************************************************************************
+* Plot some signals together (or else we won't have enough space in the plot
+* window)
+*******************************************************************************
+Xjdisplaya ra2_b_wdsel[3:0] ra2sel bsel wdsel[1:0] join
+Xjdisplayb wr_werfs[2:0]    wr werf werf_          join
+
+*******************************************************************************
+* This section plots the following signals in order:
+* - pc (program counter)
+* - beta operation mnemonic (taken from the 6-bit opcode header)
+* - ra, rb, rc (taken from the rest of the instruction opcode)
+* - c (taken from the last 16 bits of the instruction opcode)
+* - control signals (i.e., output of the control logic)
+* - rd1_ (result of reading address ra1_)
+* - rd2_ (result of reading address ra2_)
+* - wd (value being written to address wa -- but only if wr is 1)
+* - mema (address to access in main memory)
+* - memrd (result of reading address mema)
+* - memwd (value being written to address mema -- but only if werf is 1)
+*
+* Since the circuit is incomplete, the values will be invalid starting from the
+* control signals. After you're done with this current lab, the control signals
+* should be correct. (After you're done with the final lab, everything should
+* be correct!)
+*
+* IMPORTANT: Since z is currently connected to 0, only the first half of your
+*            table of control logic signals is returned. To test the second
+*            half of your table, modify the ".connect 0 z" statement above
+*            this section to ".connect vdd z". (Remember that in the final
+*            lab, z should instead be computed by some circuit instead of
+*            connected to ground or vdd!)
+*******************************************************************************
+.tran 1280n
+.plot wd[31:0]
+.plot pc[8:2]
+.plot betaop(opcode[5:0])
+.plot d(ra[4:0])
+.plot d(rb[4:0])
+.plot d(rc[4:0])
+.plot sd(c[15:0])
+.plot b(pcsel[1:0])
+.plot b(ra2_b_wdsel[3:0])
+.plot b(alufn[5:0])
+.plot b(wr_werfs[2:0])
+.plot sd(rd1_[31:0])
+.plot sd(rd2_[31:0])
+.plot sd(wd[31:0])
+.plot d(mema[8:0])
+.plot sd(memrd[31:0])
+.plot sd(memwd[31:0])
