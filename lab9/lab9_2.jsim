@@ -1,0 +1,294 @@
+*******************************************************************************
+* Lab 9: Beta Processor Implementation
+* - Castillo, Hanzo Ricardo
+* - Jaso, Elijem Timothy
+* - Marcelino, Jaren
+*******************************************************************************
+
+.include "8clocks.jsim"
+.include "nominal.jsim"
+.include "stdcell.jsim"
+
+*******************************************************************************
+* Helper Subcircuits
+*******************************************************************************
+
+* 32-bit Register (used for the PC)
+.subckt reg32 clk din[31:0] q[31:0]
+    * FIXED: Order is D, CLK, Q. Added #32 to clk to match the width.
+    Xdreg[31:0] din[31:0] clk#32 q[31:0] dreg
+.ends
+
+* Helper to join nodes (required for bus connections)
+.subckt join S T
+  .connect S T
+.ends
+
+*******************************************************************************
+* Full adder and 32-bit ripple-carry adder subcircuits
+*******************************************************************************
+.subckt fa a b c_in sum c_out
+    Xxor1 a b firsthalfOut xor2
+    Xnand1 a b nand_out1 nand2
+    Xxor2 firsthalfOut c_in sum xor2
+    Xnand2 firsthalfOut c_in nand_out2 nand2
+    Xnand3 nand_out1 nand_out2 c_out nand2
+.ends
+
+.subckt add32 a[31:0] b[31:0] cin0 sum[31:0] c_out[31:30]
+    Xfulladd32 a[31:0] b[31:0] c_out[30:0] cin0 sum[31:0] c_out[31:0] fa
+.ends
+
+*******************************************************************************
+* as32 and cmp32 subcircuits
+*******************************************************************************
+.subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z
+* Use 32 XOR gates to efficiently select between b (if op0=0) and ~b (if op0=1).
+    Xxor_op[31:0] op0#32 b[31:0] b_selected[31:0] xor2
+    Xadd32 a[31:0] b_selected[31:0] op0 fas[31:0] cout[31:30] add32
+    Xbuf_n fas[31] n buffer
+    Xxor_v cout[31] cout[30] v xor2
+* 3-level NOR tree to check if fas[31:0] is zero
+    Xnorz_l1_0 fas[3:0]   z_l1_0 or4
+    Xnorz_l1_1 fas[7:4]   z_l1_1 or4
+    Xnorz_l1_2 fas[11:8]  z_l1_2 or4
+    Xnorz_l1_3 fas[15:12] z_l1_3 or4
+    Xnorz_l1_4 fas[19:16] z_l1_4 or4
+    Xnorz_l1_5 fas[23:20] z_l1_5 or4
+    Xnorz_l1_6 fas[27:24] z_l1_6 or4
+    Xnorz_l1_7 fas[31:28] z_l1_7 or4
+    Xnorz_l2_0 z_l1_0 z_l1_1 z_l1_2 z_l1_3 z_l2_0 or4
+    Xnorz_l2_1 z_l1_4 z_l1_5 z_l1_6 z_l1_7 z_l2_1 or4
+    Xnorz_l3 z_l2_0 z_l2_1 z nor2
+.ends
+
+.subckt cmp32 n v z op[2:1] fcmp[31:0]
+    Xxor_lt n v n_xor_v xor2
+    Xand_lt op2 n_xor_v lt_res and2
+    Xand_eq op1 z eq_res and2
+    Xor_final lt_res eq_res fcmp[0] or2
+    Xgnd_unused[31:1] fcmp[31:1] constant0
+.ends
+
+*******************************************************************************
+* bool32 and shift 32 subcircuits
+*******************************************************************************
+.subckt bool32 a[31:0] b[31:0] op[3:0] fbool[31:0]
+    Xbool[31:0] a[31:0] b[31:0] op0#32 op1#32 op2#32 op3#32 fbool[31:0] mux4
+.ends
+
+.subckt shift32 a[31:0] b[4:0] op[1:0] fshift[31:0]
+    * Sets the shift type (Logical or Arithmetic) based on op1.
+    Xstype op1 0 a31 stype_out mux2
+
+    * Reverses the bits if left shift (op0 = 0)
+    Xreverse[31:0] op0#32 a[0:31] a[31:0] reverse_out[31:0] mux2
+
+    * 5-Stage Right Shift Barrel Shifter
+    Xshiftr1[31:0] b0#32 reverse_out[31:0] stype_out reverse_out[31:1] shiftr1_out[31:0] mux2
+    Xshiftr2[31:0] b1#32 shiftr1_out[31:0] stype_out#2 shiftr1_out[31:2] shiftr2_out[31:0] mux2
+    Xshiftr4[31:0] b2#32 shiftr2_out[31:0] stype_out#4 shiftr2_out[31:4] shiftr4_out[31:0] mux2
+    Xshiftr8[31:0] b3#32 shiftr4_out[31:0] stype_out#8 shiftr4_out[31:8] shiftr8_out[31:0] mux2
+    Xshiftr16[31:0] b4#32 shiftr8_out[31:0] stype_out#16 shiftr8_out[31:16] shiftr16_out[31:0] mux2
+
+    Xreverse2[31:0] op0#32 shiftr16_out[0:31] shiftr16_out[31:0] fshift[31:0] mux2
+.ends
+
+*******************************************************************************
+* alu32 subcircuit
+*******************************************************************************
+.subckt alu32 a[31:0] b[31:0] alufn[5:0] f[31:0] z
+    Xas32 a[31:0] b[31:0] alufn0 fas[31:0] n v z as32
+    Xbool32 a[31:0] b[31:0] alufn[3:0] fbool[31:0] bool32
+    Xshift32 a[31:0] b[4:0] alufn[1:0] fshift[31:0] shift32
+    Xcmp32 n v z alufn[2:1] fcmp[31:0] cmp32
+
+    Xalufn[31:0] alufn4#32 alufn5#32 fas[31:0] fbool[31:0] fshift[31:0] fcmp[31:0] f[31:0] mux4
+.ends
+
+********************************************************************************
+* MEMORY AND REGISTER DEVICES
+*******************************************************************************
+* UPDATED: Increased nlocations to 1024 and address bits to [11:2] 
+* to support the address 0x310 used in your Lab 7 Fibonacci program.
+Xmemory  vdd  0    0   pc[11:2]    inst[31:0]
++        vdd  0    0   mema[11:2]  memrd[31:0]
++        0    clk  wr  mema[11:2]  memwd[31:0]
++ $memory width=32 nlocations=1024 file="lab7.bin"
+
+Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
++           vdd  0    0      ra2_[4:0]  rd2_[31:0]
++           0    clk  werf_  wa[4:0]    wd[31:0]
++ $memory width=32 nlocations=32 contents=(
++   0 0 0 0 0 0 0 0
++   0 0 0 0 0 0 0 0
++   0 0 0 0 0 0 0 0
++   0 0 0 0 0 0 0 0
++ )
+
+* R31 Write Protection Logic
+Xcheck_r31p wa[4] wa[3] wa[2] wa[1] is_r31p and4
+Xcheck_r31 is_r31p wa[0] is_r31 nand2
+
+* Xf_werf checks if BOTH werf and is_r31 are true. 
+Xf_werf werf is_r31 werf_ and2
+
+* Control ROM
+Xcontrol  vdd  0  0  z opcode[5:0]  control[13:0]
++ $memory width=14 nlocations=128 contents=(
++   0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000
++   0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000
++   0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000
++   0b00011000000001 0b00110000000010 0b11000000000000 0b10000000000001 0b11000000000000 0b00000000000001 0b01000000000001 0b11000000000000
++   0b00000100000001 0b00000100000101 0b11000000000000 0b11000000000000 0b00000111001101 0b00000111010101 0b00000111011101 0b11000000000000
++   0b00000101000101 0b00000101011101 0b00000101011001 0b11000000000000 0b00000110000001 0b00000110000101 0b00000110001101 0b11000000000000
++   0b00010100000001 0b00010100000101 0b00010100001001 0b11000000000000 0b00010111001101 0b00010111010101 0b00010111011101 0b11000000000000
++   0b00010101000101 0b00010101011101 0b00010101011001 0b11000000000000 0b00010110000001 0b00010110000101 0b00010110001101 0b11000000000000
++
++   0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000
++   0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000
++   0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000
++   0b00011000000001 0b00110000000010 0b11000000000000 0b10000000000001 0b11000000000000 0b01000000000001 0b00000000000001 0b11000000000000
++   0b00000100000001 0b00000100000101 0b11000000000000 0b11000000000000 0b00000111001101 0b00000111010101 0b00000111011101 0b11000000000000
++   0b00000101000101 0b00000101011101 0b00000101011001 0b11000000000000 0b00000110000001 0b00000110000101 0b00000110001101 0b11000000000000
++   0b00010100000001 0b00010100000101 0b00010100001001 0b11000000000000 0b00010111001101 0b00010111010101 0b00010111011101 0b11000000000000
++   0b00010101000101 0b00010101011101 0b00010101011001 0b11000000000000 0b00010110000001 0b00010110000101 0b00010110001101 0b11000000000000
++ )
+
+*******************************************************************************
+* MAIN BETA DATAPATH
+*******************************************************************************
+
+* -------------------------
+* REGISTER INPUTS & JUMP LOGIC
+* -------------------------
+
+* ra to ra1 connection
+Xra_to_ra1 ra[4:0] ra1_[4:0] join
+
+* ra2sel multiplexer: Selects between RB (Reg-Reg) and RC (Stores)
+Xra2selmux ra2sel#5 rb[4:0] rc[4:0] ra2_[4:0] mux2 
+
+* rc to WA connection
+Xrc_to_WA rc[4:0] wa[4:0] join
+
+* werf to we connection (Connect the reset-protected WERF signal)
+.connect werf_raw werf 
+
+* JUMP LOGIC: Connect RD1 directly to JT
+* The Jump Target is simply the value inside Register RA (RD1)
+Xrd1_to_jt rd1_[31:0] jt[31:0] join
+
+* -------------------------
+* BRANCH Z-FLAG LOGIC
+* -------------------------
+* Calculate Z based on RD1 (If ra == 0, then z = 1)
+* Used for BEQ/BNE instructions
+Xnor4 rd1_[31:0] nor4o[7:0] nor4
+Xnand4 nor4o[7:0] nand4o[1:0] nand4
+Xnor2 nand4o[1:0] z nor2
+
+* -------------------------
+* ALU CONNECTIONS
+* -------------------------
+
+* BSEL MUX: Selects between RD2 and Constant C (Sign Extended)
+* C is 16-bits, sign-extended to 32
+Xbselmux bsel#32 rd2_[31:0] c15#16 c[15:0] b[31:0] mux2
+
+* rd2 to memwd connection (Data to write to memory for ST)
+Xrd2_to_wd rd2_[31:0] memwd[31:0] join
+
+* rd1 to alu's a input connection
+Xrd1_to_a rd1_[31:0] a[31:0] join
+
+* ALU Operation
+* We connect the unused Z output of your ALU to 'alu_z_dump'
+Xalu a[31:0] b[31:0] alufn[5:0] alu_output[31:0] alu_z_dump alu32 
+
+* -------------------------
+* WRITE BACK & MEMORY ADDRESS
+* -------------------------
+
+* WDSEL MUX: Select what to write back to the Register File
+* 0: PC + 4 (Jumps/Links)
+* 1: ALU Output (Arithmetic)
+* 2: Memory Read Data (Loads)
+Xwdselmux wdsel0#32 wdsel1#32 pc_plus_4[31:0] alu_output[31:0] memrd[31:0] 0#32 wd[31:0] mux4 
+
+* ALU output determines the Memory Address (mema)
+Xalu_to_mema alu_output[31:0] mema[31:0] join
+
+* -------------------------
+* CLOCK & RESET GENERATION
+* -------------------------
+.connect clk3 clk
+
+* Reset Waveform (Extended zeros to match supp2 stability)
+Wreset reset nrz(0, 5, 20ns, 1ns, 0.1ns, 0.1ns)
++ 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+* -------------------------
+* INSTRUCTION DECODING
+* -------------------------
+* Split the 32-bit instruction into its components
+Xjinsta inst[31:26] opcode[5:0] join
+Xjinstb inst[25:21] rc[4:0]     join
+Xjinstc inst[20:16] ra[4:0]     join
+Xjinstd inst[15:11] rb[4:0]     join
+Xjinste inst[15:0]  c[15:0]     join
+
+* -------------------------
+* CONTROL LOGIC CONNECTIONS
+* -------------------------
+* Break out the 14-bit control signal from the ROM
+Xjcontrola control[13:12] pcsel[1:0] join
+Xjcontrolb control11      ra2sel     join
+Xjcontrolc control10      bsel       join
+Xjcontrold control[9:8]   wdsel[1:0] join
+Xjcontrole control[7:2]   alufn[5:0] join 
+
+* Reset Logic for Write Signals (Force to 0 if reset is high)
+Xwr_init   reset control1 0 wr   mux2
+Xwerf_init reset control0 0 werf_raw mux2
+
+* -------------------------
+* PC LOGIC
+* -------------------------
+
+* <PC> + 4 Adder (using direct hardcoded 4: 0#29 vdd 0#2)
+Xpc_plus_4 pc[31:0] 0#29 vdd 0#2 0 pc_plus_4[31:0] pc_out[31:30] add32
+
+* Branch Target Adder (<PC> + 4 + 4C)
+* We shift C left by 2 by wiring 0 to the bottom 2 bits (0#2)
+Xadd_branch pc_plus_4[31:0] c15#14 c[15:0] 0#2 0 branch_target[31:0] bc_out[31:30] add32 
+
+* PCSEL MUX
+* 0 (00) -> <PC> + 4
+* 1 (01) -> Branch Target
+* 2 (10) -> Jump Target (JT)
+* 3 (11) -> 0 (Reset/Illop)
+Xpcselmux pcsel0#32 pcsel1#32 pc_plus_4[31:0] branch_target[31:0] jt[31:0] 0#32 pc_mux[31:0] mux4
+
+* Reset Logic for PC (Force to 0 if reset is high)
+Xresetpc reset#32 pc_mux[31:0] 0#32 next_pc[31:0] mux2
+
+* PC Register
+Xpc_reg clk next_pc[31:0] pc[31:0] reg32
+
+*******************************************************************************
+* PLOTTING & VERIFICATION
+*******************************************************************************
+.tran 4600ns
+.plot clk
+.plot reset
+.plot pc[31:0]
+.plot betaop(opcode[5:0])
+.plot d(ra[4:0])
+.plot d(rb[4:0])
+.plot d(rc[4:0])
+.plot sd(c[15:0])
+.plot sd(rd1_[31:0])
+.plot sd(rd2_[31:0])
+.plot sd(wd[31:0])
+.plot sd(alu_output[31:0])
