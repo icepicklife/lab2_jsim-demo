@@ -182,4 +182,5 @@ Xadd_branch pc_plus_4[31:0] branch_offset[31:0] 0 branch_target[31:0] cin_dump2 
 * 00: PC + 4 (Next Instruction)
 * 01: Branch Target (PC + 4 + 4*C)
 * 10: Jump Target (Address from Register File RD1)
-* 11: 
+* 11: Current PC (HALT - loops forever)
+Xpc_mux pc_plus_4[31:0] branch_target[31:0] rd1_[31:0] pc[31:0] pcsel[1:0] next_pc[31:0] mux4
