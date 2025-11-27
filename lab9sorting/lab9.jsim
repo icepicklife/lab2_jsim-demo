@@ -11,20 +11,19 @@
 
 *******************************************************************************
 * Helper Subcircuits
+* - reg32 - insert description
 *******************************************************************************
 
 * 32-bit Register (used for the PC)
 .subckt reg32 clk din[31:0] q[31:0]
-    * FIXED: Order is D, CLK, Q. Added #32 to clk to match the width.
-    Xdreg[31:0] din[31:0] clk#32 q[31:0] dreg
+    Xdreg[31:0] clk din[31:0] q[31:0] dreg
 .ends
 
-* Helper to join nodes (required for bus connections)
-.subckt join S T
-  .connect S T
+* Fanout helper (used for Sign Extension of C)
+.subckt fanout16 in out[15:0]
+    Xbuf in out[15:0] buffer
 .ends
 
-*******************************************************************************
 * Full adder and 32-bit ripple-carry adder subcircuits
 *******************************************************************************
 .subckt fa a b c_in sum c_out
@@ -40,7 +39,7 @@
 .ends
 
 *******************************************************************************
-* as32 and cmp32 subcircuits
+* as32 and cmp32 subcircuits MAY MALI PA SA CMP32 FIX ERROR!!!!!!!
 *******************************************************************************
 .subckt as32 a[31:0] b[31:0] op0 fas[31:0] n v z
 * Use 32 XOR gates to efficiently select between b (if op0=0) and ~b (if op0=1).
@@ -97,6 +96,7 @@
 *******************************************************************************
 * alu32 subcircuit
 *******************************************************************************
+
 .subckt alu32 a[31:0] b[31:0] alufn[5:0] f[31:0] z
     Xas32 a[31:0] b[31:0] alufn0 fas[31:0] n v z as32
     Xbool32 a[31:0] b[31:0] alufn[3:0] fbool[31:0] bool32
@@ -106,14 +106,10 @@
     Xalufn[31:0] alufn4#32 alufn5#32 fas[31:0] fbool[31:0] fshift[31:0] fcmp[31:0] f[31:0] mux4
 .ends
 
-********************************************************************************
-* MEMORY AND REGISTER DEVICES
-*******************************************************************************
-* n locations and address bits got increased with respect to the data segment of the beta program
-Xmemory  vdd  0    0   pc[11:2]    inst[31:0]
-+        vdd  0    0   mema[11:2]  memrd[31:0]
-+        0    clk  wr  mema[11:2]  memwd[31:0]
-+ $memory width=32 nlocations=1024 file="lab7.bin"
+Xmemory  vdd  0    0   pc[8:2]    inst[31:0]
++        vdd  0    0   mema[8:2]  memrd[31:0]
++        0    clk  wr  mema[8:2]  memwd[31:0]
++ $memory width=32 nlocations=128 file="lab7.bin"
 
 Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
 +           vdd  0    0      ra2_[4:0]  rd2_[31:0]
@@ -125,14 +121,12 @@ Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
 +   0 0 0 0 0 0 0 0
 + )
 
-* R31 Write Protection Logic
 Xcheck_r31p wa[4] wa[3] wa[2] wa[1] is_r31p and4
 Xcheck_r31 is_r31p wa[0] is_r31 nand2
 
 * Xf_werf checks if BOTH werf and is_r31 are true. 
 Xf_werf werf is_r31 werf_ and2
 
-* Control Signals from Lab 8
 Xcontrol  vdd  0  0  z opcode[5:0]  control[13:0]
 + $memory width=14 nlocations=128 contents=(
 +   0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000 0b11000000000000
@@ -155,134 +149,38 @@ Xcontrol  vdd  0  0  z opcode[5:0]  control[13:0]
 + )
 
 *******************************************************************************
-* BETA PROCESSOR CONNECTIONS (Following LT3 Cheat Sheet)
+* INSTRUCTION FETCH STAGE
 *******************************************************************************
 
-* REGISTERS & JUMP LINKING
-
-
-* ra to ra1 connection
-Xra_to_ra1 ra[4:0] ra1_[4:0] join
-
-* ra2sel multiplexer: Selects between RB (Reg-Reg) and RC (Stores)
-Xra2selmux ra2sel#5 rb[4:0] rc[4:0] ra2_[4:0] mux2 
-
-* rc to WA connection
-Xrc_to_WA rc[4:0] wa[4:0] join
-
-* werf to we connection (Connect the reset-protected WERF signal)
-.connect werf_raw werf 
-
-* JUMP LOGIC: Connect RD1 directly to JT
-* The Jump Target is simply the value inside Register RA (RD1)
-Xrd1_to_jt rd1_[31:0] jt[31:0] join
-
-
-*  Z-FLAG NOR LINK
-
-* Calculate Z based on RD1 (If ra == 0, then z = 1)
-* Used for BEQ/BNE instructions
-Xnor4 rd1_[31:0] nor4o[7:0] nor4
-Xnand4 nor4o[7:0] nand4o[1:0] nand4
-Xnor2 nand4o[1:0] z nor2
-
-
-* ALU / BSEL / WDSEL SECTION
-
-
-* BSEL MUX: Selects between RD2 and Constant C (Sign Extended)
-* C is 16-bits, sign-extended to 32
-Xbselmux bsel#32 rd2_[31:0] c15#16 c[15:0] b[31:0] mux2
-
-* rd2 to memwd connection (Data to write to memory for ST)
-Xrd2_to_wd rd2_[31:0] memwd[31:0] join
-
-* rd1 to alu's a input connection
-Xrd1_to_a rd1_[31:0] a[31:0] join
-
-* ALU Operation
-* We connect the unused Z output of your ALU to 'alu_z_dump'
-Xalu a[31:0] b[31:0] alufn[5:0] alu_output[31:0] alu_z_dump alu32 
-
-* WDSEL LOGIC TO MEMADD & BRANCH
-
-* WDSEL MUX: Select what to write back to the Register File
-* 0: PC + 4 (Jumps/Links)
-* 1: ALU Output (Arithmetic)
-* 2: Memory Read Data (Loads)
-Xwdselmux wdsel0#32 wdsel1#32 pc_plus_4[31:0] alu_output[31:0] memrd[31:0] 0#32 wd[31:0] mux4 
-
-* ALU output determines the Memory Address (mema)
-Xalu_to_mema alu_output[31:0] mema[31:0] join
-
-
-* CLOCK
-.connect clk3 clk
-
-
-* RESET LOGIC (Extended zeros to match supp2 stability)
-Wreset reset nrz(0, 5, 20ns, 1ns, 0.1ns, 0.1ns)
-+ 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-
-
-* INSTRUCTION -> BIT SECTION ASSIGNMENT
-* Split the 32-bit instruction into its components
-Xjinsta inst[31:26] opcode[5:0] join
-Xjinstb inst[25:21] rc[4:0]     join
-Xjinstc inst[20:16] ra[4:0]     join
-Xjinstd inst[15:11] rb[4:0]     join
-Xjinste inst[15:0]  c[15:0]     join
-
-
-* OPCODE -> CONTROL SIGNALS FOR SEL / FN
-* Break out the 14-bit control signal from the ROM
-Xjcontrola control[13:12] pcsel[1:0] join
-Xjcontrolb control11      ra2sel     join
-Xjcontrolc control10      bsel       join
-Xjcontrold control[9:8]   wdsel[1:0] join
-Xjcontrole control[7:2]   alufn[5:0] join 
-
-* Reset Logic for Write Signals (Force to 0 if reset is high)
-Xwr_init   reset control1 0 wr   mux2
-Xwerf_init reset control0 0 werf_raw mux2
-
-* PROGRAM COUNTERS
-
-* <PC> + 4 Adder (hardcoded constant 4)
-Xpc_plus_4 pc[31:0] 0#29 vdd 0#2 0 pc_plus_4[31:0] pc_out[31:30] add32
-
-* Branch Target Adder (<PC> + 4 + 4C) via shift C left by 2 (wiring 0 to the bottom 2 bits (0#2))
-Xadd_branch pc_plus_4[31:0] c15#14 c[15:0] 0#2 0 branch_target[31:0] bc_out[31:30] add32 
-
-* PCSEL MUX
-* 0 (00) -> <PC> + 4
-* 1 (01) -> Branch Target
-* 2 (10) -> Jump Target (JT)
-* 3 (11) -> 0 (Reset/Illop)
-Xpcselmux pcsel0#32 pcsel1#32 pc_plus_4[31:0] branch_target[31:0] jt[31:0] 0#32 pc_mux[31:0] mux4
-
-* PC Reset (PC -> 0 if reset is 1)
-Xresetpc reset#32 pc_mux[31:0] 0#32 next_pc[31:0] mux2
-
-* PC Register
+* 1. PC Register
 Xpc_reg clk next_pc[31:0] pc[31:0] reg32
 
-*******************************************************************************
-* PLOTTING & VERIFICATION
-*******************************************************************************
-.tran 19900ns
-.plot clk
-.plot reset
-.plot pc[31:0]
-.plot betaop(opcode[5:0])
-.plot d(ra[4:0])
-.plot d(rb[4:0])
-.plot d(rc[4:0])
-.plot sd(c[15:0])
-.plot sd(rd1_[31:0])
-.plot sd(rd2_[31:0])
-.plot sd(wd[31:0])
-.plot sd(alu_output[31:0])
-.plot wr
-.plot mema[31:0]
-.plot sd(memwd[31:0])
+* 2. Constant 4
+Xconst4 four[31:0] constant00000000000000000000000000000100
+
+* 3. PC + 4 Adder
+* This calculates the address of the next instruction
+Xaddpc4 pc[31:0] four[31:0] 0 pc_plus_4[31:0] cin_dump1 add32
+
+* 4. Branch Offset Calculation
+* 4a. Sign Extending C
+* We use the buffer to get the sign bit
+Xsign_ext c[15] c_sign_bit buffer
+Xsext_high c_sign_bit c_extended[31:16] fanout16
+Xsext_low c[15:0] c_extended[15:0] join
+
+* 4b. Shift left 2 (Branch Offset)
+* Logic: branch_offset = c_extended << 2
+Xshift_high c_extended[29:0] branch_offset[31:2] join
+Xshift_low0 0 branch_offset[0] join
+Xshift_low1 0 branch_offset[1] join
+
+* 5. Branch Target Adder
+Xadd_branch pc_plus_4[31:0] branch_offset[31:0] 0 branch_target[31:0] cin_dump2 add32
+
+* 6. PCSEL MUX 
+* 00: PC + 4 (Next Instruction)
+* 01: Branch Target (PC + 4 + 4*C)
+* 10: Jump Target (Address from Register File RD1)
+* 11: Current PC (HALT - loops forever)
+Xpc_mux pc_plus_4[31:0] branch_target[31:0] rd1_[31:0] pc[31:0] pcsel[1:0] next_pc[31:0] mux4
