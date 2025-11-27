@@ -113,7 +113,7 @@
 Xmemory  vdd  0    0   pc[11:2]    inst[31:0]
 +        vdd  0    0   mema[11:2]  memrd[31:0]
 +        0    clk  wr  mema[11:2]  memwd[31:0]
-+ $memory width=32 nlocations=1024 file="lab9testfile.bin"
++ $memory width=32 nlocations=1024 file="lab9testfile-uncommented.bin"
 
 Xregisters  vdd  0    0      ra1_[4:0]  rd1_[31:0]
 +           vdd  0    0      ra2_[4:0]  rd2_[31:0]
